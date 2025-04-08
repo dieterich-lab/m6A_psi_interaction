@@ -201,15 +201,22 @@ for this_mod in mod_names:
         (np.abs(this_merged_df['delta_OE']) >= 5)
         ]
 
+    if this_mod == 'a':
+        markersize = 1
+    else:
+        markersize = 3
+
     plt.figure(figsize=(5*cm, 5*cm))
     # plt.scatter(this_merged_df['freq_WT'], this_merged_df['delta_KD'], s=0.5, c=cond_colors['KD'])
     # plt.scatter(this_merged_df['freq_WT'], this_merged_df['delta_OE'], s=0.5, c=cond_colors['OE'])
     for _, this_row in this_merged_df.iterrows():
-        plt.plot(this_row['freq_WT'], this_row['delta_OE'], '.', markersize=1, c=cond_colors['OE'])
-        plt.plot(this_row['freq_WT'], this_row['delta_KD'], '.', markersize=1, c=cond_colors['KD'])
-        if this_mod == '17802':
-            plt.plot([this_row['freq_WT']] * 2, [this_row['delta_KD'], this_row['delta_OE']],
-                     c=cond_colors['WT'], linewidth=0.5, alpha=0.5)
+        plt.plot(this_row['freq_WT'], this_row['delta_OE'], '.',
+                 markersize=markersize, markeredgecolor='None', c=cond_colors['OE'])
+        plt.plot(this_row['freq_WT'], this_row['delta_KD'], '.',
+                 markersize=markersize, markeredgecolor='None', c=cond_colors['KD'])
+        # if this_mod == '17802':
+        #     plt.plot([this_row['freq_WT']] * 2, [this_row['delta_KD'], this_row['delta_OE']],
+        #              c=cond_colors['WT'], linewidth=0.5, alpha=0.5)
     plt.ylim([-100, 100])
     plt.xlabel('$S_{WT}$')
     plt.ylabel('$\Delta$ from $S_{WT}$')
@@ -228,5 +235,3 @@ for this_mod in mod_names:
     plt.legend(handles=handles, loc='lower left')
 
     plt.savefig(os.path.join(img_out, f'scatter_delta_vs_S_WT_mod_{this_mod}.{FMT}'), **fig_kwargs)
-
-
