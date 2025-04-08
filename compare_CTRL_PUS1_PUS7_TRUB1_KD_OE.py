@@ -184,11 +184,11 @@ for sel_mod in mod_names:
     plt.title(f'${dict_mod_display[sel_mod]}$, {mod_motif_name[sel_mod]} motifs')
     plt.savefig(os.path.join(img_out, f'histogram_mod_{sel_mod}_{WRITER}.{FMT}'), **fig_kwargs)
 
-# with open(os.path.join(base_dir, 'dfs_mod_filtered.pkl'), 'wb') as pkl_out:
+# with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'wb') as pkl_out:
 #     pickle.dump(dfs_mod_filtered, pkl_out)
 
 ### merged and plot delta ###
-with open(os.path.join(base_dir, 'dfs_mod_filtered.pkl'), 'rb') as pkl_in:
+with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'rb') as pkl_in:
     dfs_mod_filtered = pickle.load(pkl_in)
 
 dfs_mod_merged = {}
