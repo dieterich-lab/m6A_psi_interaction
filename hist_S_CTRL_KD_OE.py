@@ -1,6 +1,5 @@
 from Bio import SeqIO
 from tqdm import tqdm
-import logomaker as lm
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -81,33 +80,6 @@ def get_df_mod_filtered(in_df, in_mod, in_ref, in_motifs):
     return this_df_mod[this_df_mod['ref_motif'].isin(in_motifs)]
 
 
-def get_merged_df_with_delta(in_dfs):
-    merged_fields = [
-        'chrom',
-        'chromStart',
-        'chromEnd',
-        'name',
-        'strand',
-        'ref_motif'
-    ]
-
-    this_mod_dfs = []
-    for cond in conditions:
-        df = in_dfs[cond].copy()
-        this_mod_dfs.append(
-            df.rename(columns={'score': f'score_{cond}', 'frequency': f'freq_{cond}'})
-        )
-    out_df_merged = reduce(lambda left, right: pd.merge(left, right, on=merged_fields, how='inner'), this_mod_dfs)
-    out_df_merged = out_df_merged[
-        (out_df_merged['freq_KD'] > 0) *
-        (out_df_merged['freq_WT'] > 0) *
-        (out_df_merged['freq_OE'] > 0)
-        ]
-    out_df_merged['delta_KD'] = out_df_merged['freq_KD'] - out_df_merged['freq_WT']
-    out_df_merged['delta_OE'] = out_df_merged['freq_OE'] - out_df_merged['freq_WT']
-    return out_df_merged
-
-
 img_out = IMG_OUT
 os.makedirs(img_out, exist_ok=True)
 
@@ -136,17 +108,17 @@ dict_mod_display = {
 }
 
 cond_colors = {
-    'WT': 'gray',
-    'OE': 'red',
-    'KD': 'blue'
+    'CTRL': 'gray',
+    f'{writer}-OE': 'red',
+    f'{writer}-KD': 'blue'
 }
 
 dfs = {}
-dfs['WT'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', 'CTRL')
-dfs['KD'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', f'{writer}-KD')
-dfs['OE'] = get_df_from_bed(base_dir, 'HEK293_psU-OE', f'{writer}-OE')
-# conditions = list(dfs.keys())
-conditions = ['KD', 'WT', 'OE']
+dfs['CTRL'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', 'CTRL')
+dfs[f'{writer}-KD'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', f'{writer}-KD')
+dfs[f'{writer}-OE'] = get_df_from_bed(base_dir, 'HEK293_psU-OE', f'{writer}-OE')
+conditions = list(dfs.keys())
+# conditions = ['KD', 'WT', 'OE']
 
 ref = get_ref()
 
@@ -174,7 +146,7 @@ for sel_mod in mod_names:
         this_hist, bin_edges = np.histogram(this_df_mod_filtered['frequency'], range=[0, 100], bins=num_bins)
         this_hist_norm = this_hist / np.sum(this_hist)
         bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
-        plt.semilogy(bin_centers, this_hist_norm, label=f'{writer}-{this_cond}', c=cond_colors[this_cond])
+        plt.semilogy(bin_centers, this_hist_norm, label=f'{this_cond}', c=cond_colors[this_cond])
         # plt.bar(bin_centers+(cond_ind-1)*5, this_hist_norm, label=f'{writer}-{this_cond}',
         #         fc=cond_colors[this_cond], width=5, log=True)
     plt.legend()
@@ -184,54 +156,5 @@ for sel_mod in mod_names:
     plt.title(f'${dict_mod_display[sel_mod]}$, {mod_motif_name[sel_mod]} motifs')
     plt.savefig(os.path.join(img_out, f'histogram_mod_{sel_mod}_{WRITER}.{FMT}'), **fig_kwargs)
 
-# with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'wb') as pkl_out:
-#     pickle.dump(dfs_mod_filtered, pkl_out)
-
-### merged and plot delta ###
-with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'rb') as pkl_in:
-    dfs_mod_filtered = pickle.load(pkl_in)
-
-dfs_mod_merged = {}
-for this_mod in mod_names:
-    this_merged_df = get_merged_df_with_delta(dfs_mod_filtered[this_mod])
-    dfs_mod_merged[this_mod] = this_merged_df
-
-    this_merged_df = this_merged_df[
-        (np.abs(this_merged_df['delta_KD']) >= 5) +
-        (np.abs(this_merged_df['delta_OE']) >= 5)
-        ]
-
-    if this_mod == 'a':
-        markersize = 1
-    else:
-        markersize = 3
-
-    plt.figure(figsize=(5*cm, 5*cm))
-    # plt.scatter(this_merged_df['freq_WT'], this_merged_df['delta_KD'], s=0.5, c=cond_colors['KD'])
-    # plt.scatter(this_merged_df['freq_WT'], this_merged_df['delta_OE'], s=0.5, c=cond_colors['OE'])
-    for _, this_row in this_merged_df.iterrows():
-        plt.plot(this_row['freq_WT'], this_row['delta_OE'], '.',
-                 markersize=markersize, markeredgecolor='None', c=cond_colors['OE'])
-        plt.plot(this_row['freq_WT'], this_row['delta_KD'], '.',
-                 markersize=markersize, markeredgecolor='None', c=cond_colors['KD'])
-        # if this_mod == '17802':
-        #     plt.plot([this_row['freq_WT']] * 2, [this_row['delta_KD'], this_row['delta_OE']],
-        #              c=cond_colors['WT'], linewidth=0.5, alpha=0.5)
-    plt.ylim([-100, 100])
-    plt.xlabel('$S_{WT}$')
-    plt.ylabel('$\Delta$ from $S_{WT}$')
-    plt.title(f'${dict_mod_display[this_mod]}$, {mod_motif_name[this_mod]} motifs')
-
-    point = Line2D([0], [0], label='OE', marker='o', markersize=1,
-                   markerfacecolor=cond_colors['OE'], linestyle='')
-
-
-    # handles, labels = plt.gca().get_legend_handles_labels()
-    handles = [Line2D([0], [0], label=f'{writer}-{this_cond}',
-                      marker='.', markersize=5, markerfacecolor=cond_colors[this_cond], markeredgecolor='None',
-                      linestyle='')
-               for this_cond in ['KD', 'OE']
-               ]
-    plt.legend(handles=handles, loc='lower left')
-
-    plt.savefig(os.path.join(img_out, f'scatter_delta_vs_S_WT_mod_{this_mod}.{FMT}'), **fig_kwargs)
+with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'wb') as pkl_out:
+    pickle.dump(dfs_mod_filtered, pkl_out)
