@@ -24,16 +24,14 @@ FMT = 'png'
 fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
 #######################################################################
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import os
 import pickle
-from functools import reduce
 
 
 REF_FILE = '/home/adrian/Data/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa'
 IMG_OUT = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 BASE_DIR = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
-WRITER = 'PUS7'
+WRITER = 'PUS1'
 
 
 def get_ref(ref_file=REF_FILE):
@@ -97,7 +95,12 @@ sel_motifs = {
     },
     '17802': {
         'TRUB1': ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'],
-        'PUS7': ['TGTAG']
+        'PUS7': ['TGTAG'],
+        'PUS1': [f'{pos1}{pos2}T{pos4}{pos5}'
+                 for pos1 in ['A', 'C', 'G', 'T']
+                 for pos2 in ['A', 'G']
+                 for pos4 in ['A', 'G']
+                 for pos5 in ['A', 'C', 'G', 'T']]
     }
 }
 
@@ -152,7 +155,7 @@ for sel_mod in mod_names:
     plt.legend()
     plt.xticks(np.linspace(0, 100, num_bins+1))
     plt.xlabel('S')
-    plt.ylabel('Probility (log)')
+    plt.ylabel('Probability (log)')
     plt.title(f'${dict_mod_display[sel_mod]}$, {mod_motif_name[sel_mod]} motifs')
     plt.savefig(os.path.join(img_out, f'histogram_mod_{sel_mod}_{WRITER}.{FMT}'), **fig_kwargs)
 

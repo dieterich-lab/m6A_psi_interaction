@@ -99,13 +99,13 @@ def get_binned_dist_delta(in_vec_dist, in_vec_delta, in_bin_range, in_bin_width)
 
 
 base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
-writer = 'TRUB1'
+writer = 'PUS7'
 # cond = 'KD'
 cond = 'OE'
 
 img_out = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 
-with open(os.path.join(base_dir, 'dfs_mod_filtered_TRUB1.pkl'), 'rb') as pkl_in:
+with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'rb') as pkl_in:
     dfs_mod_cond = pickle.load(pkl_in)
 
 annot_dir = '/home/adrian/Data/genomes/homo_sapiens/GRCh38_102/exons'
@@ -123,13 +123,11 @@ plt.hist(merged_df_psi[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, lo
 plt.xlabel('$\Delta$S($\psi$)')
 plt.ylabel('Site count')
 plt.axvline(x=0, c='r')
-
 plt.subplot(1, 2, 2)
 plt.hist(merged_df_m6a[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
 plt.xlabel('$\Delta$S(m6A)')
 plt.ylabel('Site count')
 plt.axvline(x=0, c='r')
-
 plt.suptitle(f'{writer}-{cond} vs CTRL')
 plt.tight_layout()
 plt.savefig(os.path.join(img_out, f'hist_mods_{writer}-{cond}.{FMT}'), **fig_kwargs)
