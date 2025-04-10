@@ -33,7 +33,7 @@ from functools import reduce
 REF_FILE = '/home/adrian/Data/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa'
 IMG_OUT = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 BASE_DIR = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
-WRITER = 'TRUB1'
+WRITER = 'PUS7'
 
 
 def get_ref(ref_file=REF_FILE):

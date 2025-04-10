@@ -117,15 +117,22 @@ chr_annots = {
 merged_df_psi = get_merged_df_with_delta(dfs_mod_cond['17802'], ['CTRL', f'{writer}-{cond}'])
 merged_df_m6a = get_merged_df_with_delta(dfs_mod_cond['a'], ['CTRL', f'{writer}-{cond}'])
 
-plt.figure(figsize=(5*cm, 5*cm))
+plt.figure(figsize=(10*cm, 5*cm))
+plt.subplot(1, 2, 1)
 plt.hist(merged_df_psi[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
+plt.xlabel('$\Delta$S($\psi$)')
+plt.ylabel('Site count')
 plt.axvline(x=0, c='r')
-plt.savefig(os.path.join(img_out, 'hist_psi.png'), **fig_kwargs)
 
-plt.figure(figsize=(5*cm, 5*cm))
+plt.subplot(1, 2, 2)
 plt.hist(merged_df_m6a[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
+plt.xlabel('$\Delta$S(m6A)')
+plt.ylabel('Site count')
 plt.axvline(x=0, c='r')
-plt.savefig(os.path.join(img_out, 'hist_m6a.png'), **fig_kwargs)
+
+plt.suptitle(f'{writer}-{cond} vs CTRL')
+plt.tight_layout()
+plt.savefig(os.path.join(img_out, f'hist_mods_{writer}-{cond}.{FMT}'), **fig_kwargs)
 
 merged_df_m6a.iloc[:, 4] = merged_df_m6a[f'delta_{writer}-{cond}']
 m6a_bedtool = pybedtools.BedTool.from_dataframe(merged_df_m6a.iloc[:, :6])
