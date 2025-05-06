@@ -31,7 +31,7 @@ import pickle
 REF_FILE = '/home/adrian/Data/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa'
 IMG_OUT = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 BASE_DIR = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
-WRITER = 'PUS1'
+WRITER = 'TRUB1'
 
 
 def get_ref(ref_file=REF_FILE):
@@ -110,25 +110,32 @@ dict_mod_display = {
     '17802': '\psi'
 }
 
+# conditions = list(dfs.keys())
+# conditions = ['KD', 'WT', 'OE']
+conditions = ['CTRL', f'{writer}-KD', f'{writer}-OE']
+
 cond_colors = {
     'CTRL': 'gray',
     f'{writer}-OE': 'red',
     f'{writer}-KD': 'blue'
 }
 
-dfs = {}
-dfs['CTRL'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', 'CTRL')
-dfs[f'{writer}-KD'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', f'{writer}-KD')
-dfs[f'{writer}-OE'] = get_df_from_bed(base_dir, 'HEK293_psU-OE', f'{writer}-OE')
-conditions = list(dfs.keys())
-# conditions = ['KD', 'WT', 'OE']
+path_dfs_mod_filtered = os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl')
+if os.path.exists(path_dfs_mod_filtered):
+    with open(path_dfs_mod_filtered, 'rb') as pkl_in:
+        dfs_mod_filtered = pickle.load(pkl_in)
+else:
+    dfs = {}
+    dfs['CTRL'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', 'CTRL')
+    dfs[f'{writer}-KD'] = get_df_from_bed(base_dir, 'HEK293_psU-KD', f'{writer}-KD')
+    dfs[f'{writer}-OE'] = get_df_from_bed(base_dir, 'HEK293_psU-OE', f'{writer}-OE')
 
-ref = get_ref()
+    ref = get_ref()
 
-### histogram ###
-dfs_mod_filtered = {
-    this_mod: {} for this_mod in mod_names
-}
+    ### histogram ###
+    dfs_mod_filtered = {
+        this_mod: {} for this_mod in mod_names
+    }
 
 mod_motif_name = {
     '17802': writer,
@@ -159,5 +166,6 @@ for sel_mod in mod_names:
     plt.title(f'${dict_mod_display[sel_mod]}$, {mod_motif_name[sel_mod]} motifs')
     plt.savefig(os.path.join(img_out, f'histogram_mod_{sel_mod}_{WRITER}.{FMT}'), **fig_kwargs)
 
-with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'wb') as pkl_out:
-    pickle.dump(dfs_mod_filtered, pkl_out)
+if not os.path.exists(path_dfs_mod_filtered):
+    with open(path_dfs_mod_filtered, 'wb') as pkl_out:
+        pickle.dump(dfs_mod_filtered, pkl_out)

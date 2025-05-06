@@ -26,6 +26,8 @@ fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
 import matplotlib.pyplot as plt
 import pybedtools
 import numpy as np
+from tqdm import tqdm
+from scipy import stats
 
 
 def get_merged_df_with_delta(in_dfs, compare_conds):
@@ -71,7 +73,8 @@ def get_neighboring_sites_on_exon(in_row, dict_annots, second_mod_bedtool):
 
 def get_vec_dist_delta_from_site_df(in_df, sec_bedtool, annots):
     dist_delta = []
-    for _, this_row in in_df.iterrows():
+    print(f'Processing {len(in_df)} sites...')
+    for _, this_row in tqdm(in_df.iterrows()):
         exon_sec_sites = get_neighboring_sites_on_exon(this_row, annots, sec_bedtool)
         if len(exon_sec_sites):
             this_vec_dist = (this_row['chromStart'] - exon_sec_sites['start']).abs().to_numpy()
@@ -92,16 +95,17 @@ def get_binned_dist_delta(in_vec_dist, in_vec_delta, in_bin_range, in_bin_width)
         if mask_dist.any():
             # binned_delta.append(np.median(in_vec_delta[mask_dist]))
             # binned_delta.append(np.mean(in_vec_delta[mask_dist]))
-            binned_delta.append(np.max(in_vec_delta[mask_dist]))
+            # binned_delta.append(np.max(in_vec_delta[mask_dist]))
+            binned_delta.append(in_vec_delta[mask_dist])
         else:
             binned_delta.append(np.nan)
-    return bin_centers, np.array(binned_delta)
+    return bin_centers, binned_delta
 
 
 base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
 writer = 'PUS7'
-# cond = 'KD'
-cond = 'OE'
+cond = 'KD'
+# cond = 'OE'
 
 img_out = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 
@@ -137,32 +141,73 @@ m6a_bedtool = pybedtools.BedTool.from_dataframe(merged_df_m6a.iloc[:, :6])
 
 thresh_delta = 5
 
-df_psi_down = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] < -thresh_delta]
-df_psi_up = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] >= thresh_delta]
-
-psi_down_vec_dist, psi_down_vec_delta = get_vec_dist_delta_from_site_df(df_psi_down, m6a_bedtool, chr_annots)
-psi_up_vec_dist, psi_up_vec_delta = get_vec_dist_delta_from_site_df(df_psi_up, m6a_bedtool, chr_annots)
+# df_psi_same = merged_df_psi[
+#     (merged_df_psi[f'delta_{writer}-{cond}'] >= -thresh_delta)
+#     * (merged_df_psi[f'delta_{writer}-{cond}'] < thresh_delta)
+#     ]
 
 bin_range = [0, 2000]
 bin_width = 200
-psi_down_binned_dist, psi_down_binned_delta = get_binned_dist_delta(
-    psi_down_vec_dist, psi_down_vec_delta, bin_range, bin_width
-)
-psi_up_binned_dist, psi_up_binned_delta = get_binned_dist_delta(
-    psi_up_vec_dist, psi_up_vec_delta, bin_range, bin_width
-)
 
-xticks = np.int64(np.linspace(*bin_range, 6))
+if cond == 'KD':
+    df_psi_down = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] < -thresh_delta]
+    num_sites = len(df_psi_down)
+    psi_down_vec_dist, psi_down_vec_delta = get_vec_dist_delta_from_site_df(df_psi_down, m6a_bedtool, chr_annots)
+    psi_down_binned_dist, psi_down_binned_delta = get_binned_dist_delta(
+        psi_down_vec_dist, psi_down_vec_delta, bin_range, bin_width
+    )
+    psi_down_binned_delta_lower = np.array([np.quantile(this_bin, 0.01) for this_bin in psi_down_binned_delta])
+    psi_down_binned_delta_upper = np.array([np.quantile(this_bin, 0.99) for this_bin in psi_down_binned_delta])
+    psi_down_binned_delta_mean = 0.5 * (psi_down_binned_delta_upper + psi_down_binned_delta_lower)
+elif cond == 'OE':
+    df_psi_up = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] >= thresh_delta]
+    num_sites = len(df_psi_up)
+    psi_up_vec_dist, psi_up_vec_delta = get_vec_dist_delta_from_site_df(df_psi_up, m6a_bedtool, chr_annots)
+    psi_up_binned_dist, psi_up_binned_delta = get_binned_dist_delta(
+        psi_up_vec_dist, psi_up_vec_delta, bin_range, bin_width
+    )
+    psi_up_binned_delta_lower = np.array([np.quantile(this_bin, 0.01) for this_bin in psi_up_binned_delta])
+    psi_up_binned_delta_upper = np.array([np.quantile(this_bin, 0.99) for this_bin in psi_up_binned_delta])
+    psi_up_binned_delta_mean = 0.5 * (psi_up_binned_delta_upper + psi_up_binned_delta_lower)
+# psi_same_vec_dist, psi_same_vec_delta = get_vec_dist_delta_from_site_df(df_psi_same, m6a_bedtool, chr_annots)
+
+# psi_same_binned_dist, psi_same_binned_delta = get_binned_dist_delta(
+#     psi_same_vec_dist, psi_same_vec_delta, bin_range, bin_width
+# )
+# psi_down_binned_delta_mean = [stats.trim_mean(this_bin, 0.25) for this_bin in psi_down_binned_delta]
+# psi_up_binned_delta_mean = [stats.trim_mean(this_bin, 0.25) for this_bin in psi_up_binned_delta]
+# psi_up_binned_delta_mean = psi_up_binned_delta_lower - psi_up_binned_delta_upper
+
+xticks = np.int64(np.linspace(*bin_range, 5))
 
 plt.figure(figsize=(5*cm, 5*cm))
-# plt.scatter(psi_down_vec_dist, psi_down_vec_delta, s=1, c='b')
-# plt.scatter(psi_up_vec_dist, psi_up_vec_delta, s=1, c='r')
-plt.plot(psi_down_binned_dist, psi_down_binned_delta, 'b', label=f'$\Delta$S($\psi$) < -{thresh_delta}')
-plt.plot(psi_up_binned_dist, psi_up_binned_delta, 'r', label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
+# plt.scatter(psi_up_vec_dist, psi_up_vec_delta, s=1, c='gray', label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
+if cond == 'OE':
+    plt.scatter(psi_up_vec_dist, psi_up_vec_delta, s=1, c='gray')
+    plt.axhline(y=0, c='g', ls='--')
+    plt.plot(psi_up_binned_dist, psi_up_binned_delta_mean, c='r', label='Trimmed mean')
+    plt.plot(psi_up_binned_dist, psi_up_binned_delta_mean, 'r.')
+elif cond == 'KD':
+    plt.scatter(psi_down_vec_dist, psi_down_vec_delta, s=1, c='gray')
+    plt.axhline(y=0, c='g', ls='--')
+    plt.plot(psi_down_binned_dist, psi_down_binned_delta_mean, c='r', label='Trimmed mean')
+    plt.plot(psi_down_binned_dist, psi_down_binned_delta_mean, 'r.')
+# plt.scatter(psi_down_vec_dist, psi_down_vec_delta, s=1, c='b', label=f'$\Delta$S($\psi$) < -{thresh_delta}')
+# plt.plot(psi_down_binned_dist, psi_down_binned_delta, 'b', label=f'$\Delta$S($\psi$) < -{thresh_delta}')
+# plt.plot(psi_same_binned_dist, psi_same_binned_delta, 'gray', label=f'-{thresh_delta} $\leq$ $\Delta$S($\psi$) < {thresh_delta}')
+# plt.plot(psi_up_binned_dist, psi_up_binned_delta, 'r', label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
+# plt.boxplot(psi_down_binned_delta, positions=psi_down_binned_dist, showfliers=False, label=f'$\Delta$S($\psi$) < -{thresh_delta}')
+# plt.boxplot(psi_up_binned_delta, positions=psi_up_binned_dist, widths=1, label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
 plt.xlim(bin_range)
+plt.ylim([-25, 25])
 plt.xticks(xticks)
 plt.xlabel('Distance from $\psi$ site on same exon (nts)')
-plt.ylabel('Max. $\Delta$S(m6A)')
-plt.title(f'{writer}-{cond} vs CTRL')
+plt.ylabel('$\Delta$S(m6A)')
+# plt.plot(psi_up_binned_dist, psi_up_binned_delta_lower, c='b')
+if cond == 'OE':
+    plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)$\geq${thresh_delta}')
+elif cond == 'KD':
+    plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)<-{thresh_delta}')
 plt.legend()
 plt.savefig(os.path.join(img_out, f'dist_corr_m6a_from_psi_{writer}-{cond}_thresh{thresh_delta}.{FMT}'), **fig_kwargs)
+# plt.savefig(os.path.join(img_out, f'boxplot_m6a_from_psi_{writer}-{cond}_thresh{thresh_delta}.{FMT}'), **fig_kwargs)
