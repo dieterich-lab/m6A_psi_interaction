@@ -74,7 +74,7 @@ def get_mod_mean_occupancy(in_read, min_locs=thresh_min_locs):
 #
 # base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling/Adrian/results/psico-mAFiA_v1'
 #
-# ds = 'WT'
+# ds = 'HEK293_WT_R002'
 # bam_file = os.path.join(base_dir, 'HEK293/WT_P2/chrALL.mAFiA.reads.bam')
 
 # ds = 'M3KO'
