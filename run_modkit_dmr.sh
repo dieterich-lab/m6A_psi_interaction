@@ -6,6 +6,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=40
 #SBATCH --mem=80GB
+#SBATCH --output=/home/achan/slurm/modkit_dmr_%A.out
+
+module load modkit/0.4.2
 
 in_dir="/prj/TRR319_RMaP_BaseCalling_RNA004/Adrian/HEK293_psU-KD"
 out_dir="/prj/TRR319_RMaP_BaseCalling_RNA004/Adrian/HEK293_psU-KD"
