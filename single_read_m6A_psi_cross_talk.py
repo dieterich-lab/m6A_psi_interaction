@@ -57,9 +57,16 @@ thresh_min_locs = 10
 def get_mod_mean_occupancy(in_read, min_locs=thresh_min_locs):
     mod_mean_occupancy = {}
     for this_mod, this_tag in mod_tags.items():
+        this_mod_locs = [this_tup[0] for this_tup in in_read.modified_bases.get(this_tag, [])]
+        if len(this_mod_locs) < min_locs:
+            mod_mean_occupancy[this_mod] = np.nan
+            continue
+        loc_motifs = [in_read.query_sequence[this_loc - 2:this_loc + 3] for this_loc in this_mod_locs]
+        motif_included = np.array([this_motif in mod_motifs[this_mod] for this_motif in loc_motifs])
         this_mod_probs = np.array([this_tup[1] for this_tup in in_read.modified_bases.get(this_tag, [])]) / 255.0
-        if len(this_mod_probs) >= min_locs:
-            mod_mean_occupancy[this_mod] = np.mean(this_mod_probs >= 0.5)
+        filtered_mod_probs = this_mod_probs[motif_included]
+        if len(filtered_mod_probs) >= min_locs:
+            mod_mean_occupancy[this_mod] = np.mean(filtered_mod_probs >= 0.5)
         else:
             mod_mean_occupancy[this_mod] = np.nan
     return mod_mean_occupancy
@@ -95,6 +102,21 @@ def get_mod_mean_occupancy(in_read, min_locs=thresh_min_locs):
 mod_tags = {
     'm6A': ('A', 0, 'a'),
     'psi': ('T', 0, 17802)
+}
+
+mod_motifs = {
+    'm6A': [
+            'GGACT', 'GGACA', 'GAACT', 'AGACT', 'GGACC', 'TGACT',
+            'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
+            'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
+    ],
+    'psi': ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
+           [f'{pos1}{pos2}T{pos4}{pos5}'
+            for pos1 in ['A', 'C', 'G', 'T']
+            for pos2 in ['A', 'G']
+            for pos4 in ['A', 'G']
+            for pos5 in ['A', 'C', 'G', 'T']
+            ]
 }
 
 base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Isabel/20250224_HEK293_psU_kds_RTA/Dorado_082'
@@ -134,6 +156,8 @@ for bin_i in range(len(bin_edges)-1):
     mask_psi = (vec_psi >= bin_start) * (vec_psi < bin_end)
     binned_m6A.append(vec_m6A[mask_psi])
 
+out_file = os.path.join(base_dir, f'single_read_frac_m6A_psi_{ds}.npz')
+np.savez(out_file, vec_m6A=vec_m6A, vec_psi=vec_psi)
 
 flierprops = dict(marker='o', markerfacecolor='none', markersize=2, markeredgecolor='gray',
                   alpha=0.5, rasterized=True)
