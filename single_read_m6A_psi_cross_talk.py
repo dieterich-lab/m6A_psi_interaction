@@ -143,6 +143,9 @@ vec_m6A, vec_psi = np.vstack([
 ]).T
 num_valid_reads = len(vec_m6A)
 
+out_file = os.path.join(base_dir, f'single_read_frac_m6A_psi_{ds}.npz')
+np.savez(out_file, vec_m6A=vec_m6A, vec_psi=vec_psi)
+
 binned_psi = []
 binned_m6A = []
 bin_edges = np.round(np.linspace(0, 1, 6), 1)
@@ -155,9 +158,6 @@ for bin_i in range(len(bin_edges)-1):
     binned_psi.append(vec_psi[mask_m6A])
     mask_psi = (vec_psi >= bin_start) * (vec_psi < bin_end)
     binned_m6A.append(vec_m6A[mask_psi])
-
-out_file = os.path.join(base_dir, f'single_read_frac_m6A_psi_{ds}.npz')
-np.savez(out_file, vec_m6A=vec_m6A, vec_psi=vec_psi)
 
 flierprops = dict(marker='o', markerfacecolor='none', markersize=2, markeredgecolor='gray',
                   alpha=0.5, rasterized=True)
