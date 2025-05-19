@@ -14,8 +14,8 @@ in_dir="/prj/TRR319_RMaP_BaseCalling_RNA004/Adrian/HEK293_psU-OE/modkit042"
 out_dir="/prj/TRR319_RMaP_BaseCalling_RNA004/Adrian/HEK293_psU-OE/dmr"
 ref="/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa"
 
-cond0=CTRL
-cond1=CTRL
+cond0=PUS1_OE
+cond1=PUS1_OE
 
 mod=m6A
 base=A
