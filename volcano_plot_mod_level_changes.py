@@ -8,25 +8,34 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-def get_vec_change_neg_log_pval(in_dmr_file):
-    change_pval = []
+def get_vec_change_neg_log_pval(in_dmr_file, in_thresh_count):
+    change_pval_score = []
     for this_chunk in tqdm(pd.read_csv(in_dmr_file, sep='\t', dtype={'chrom': str}, iterator=True, chunksize=10000)):
         if replicates:
-            this_chunk_valid = this_chunk[this_chunk['balanced_p_value'] < 1]
-            change_pval.append(this_chunk_valid[['balanced_effect_size', 'balanced_p_value']].values)
+            this_chunk_valid = this_chunk[
+                (this_chunk['balanced_p_value'] < 1)
+                * (this_chunk['sample_a_total'] >= in_thresh_count)
+                * (this_chunk['sample_b_total'] >= in_thresh_count)
+                ]
+            change_pval_score.append(this_chunk_valid[['balanced_effect_size', 'balanced_p_value', 'score']].values)
         else:
-            this_chunk_valid = this_chunk[this_chunk['p_value'] < 1]
-            change_pval.append(this_chunk_valid[['effect_size', 'p_value']].values)
-    vec_effect_size, vec_pval = np.vstack(change_pval).T
+            this_chunk_valid = this_chunk[
+                (this_chunk['p_value'] < 1)
+                * (this_chunk['sample_a_total'] >= in_thresh_count)
+                * (this_chunk['sample_b_total'] >= in_thresh_count)
+                ]
+            change_pval_score.append(this_chunk_valid[['effect_size', 'p_value', 'score']].values)
+    vec_effect_size, vec_pval, vec_score = np.vstack(change_pval_score).T
     vec_change = -vec_effect_size * 100
     vec_neg_log_pval = -np.log10(vec_pval)
-    return vec_change, vec_neg_log_pval
+    return vec_change, vec_neg_log_pval, vec_score
 
 
-def get_mask(in_vec_change, in_vec_neg_log_pval, in_thresh_neg_log_pval):
-    mask_no_change = in_vec_neg_log_pval < in_thresh_neg_log_pval
-    mask_pos_change = (in_vec_neg_log_pval >= in_thresh_neg_log_pval) * (in_vec_change >= 0)
-    mask_neg_change = (in_vec_neg_log_pval >= in_thresh_neg_log_pval) * (in_vec_change < 0)
+def get_mask(in_vec_change, in_vec_neg_log_pval, in_thresh_change, in_thresh_neg_log_pval):
+    # mask_no_change = in_vec_neg_log_pval < in_thresh_neg_log_pval
+    mask_no_change = (in_vec_change < in_thresh_change) * (in_vec_change >= -in_thresh_change)
+    mask_pos_change = (in_vec_neg_log_pval >= in_thresh_neg_log_pval) * (in_vec_change >= in_thresh_change)
+    mask_neg_change = (in_vec_neg_log_pval >= in_thresh_neg_log_pval) * (in_vec_change < -in_thresh_change)
 
     num_pos_change = np.sum(mask_pos_change)
     num_neg_change = np.sum(mask_neg_change)
@@ -46,11 +55,14 @@ dict_display_mod = {
 
 # exp = 'HEK293_psU-KD'
 exp = 'HEK293_psU-OE'
-cond0 = 'CTRL_rep1'
-cond1 = 'CTRL_rep2'
-replicates = False
+cond0 = 'CTRL'
+cond1 = 'TRUB1_OE'
+replicates = True
 
 thresh_neg_log_pval = 2.0
+thresh_score = 2.0
+thresh_count = 50
+thresh_change = 25.0
 
 plt.figure(figsize=(10, 5))
 for subplot_ind, mod in enumerate(['psi', 'm6A']):
@@ -58,14 +70,16 @@ for subplot_ind, mod in enumerate(['psi', 'm6A']):
         this_dmr_file = os.path.join(data_dir, exp, 'dmr', f'{cond0}_{cond1}_replicates.cov10.{mod}.diff_sites.dmr')
     else:
         this_dmr_file = os.path.join(data_dir, exp, 'dmr', f'{cond0}_{cond1}.cov10.{mod}.diff_sites.dmr')
-    this_vec_change, this_vec_neg_log_pval = get_vec_change_neg_log_pval(this_dmr_file)
-    this_mask_no_change, this_mask_neg_change, this_mask_pos_change, this_num_neg_change, this_num_pos_change = get_mask(this_vec_change, this_vec_neg_log_pval, thresh_neg_log_pval)
+    this_vec_change, this_vec_neg_log_pval, this_vec_score = get_vec_change_neg_log_pval(this_dmr_file, thresh_count)
+    this_mask_no_change, this_mask_neg_change, this_mask_pos_change, this_num_neg_change, this_num_pos_change = get_mask(this_vec_change, this_vec_neg_log_pval, thresh_change, thresh_neg_log_pval)
 
     plt.subplot(1, 2, subplot_ind+1)
     plt.scatter(this_vec_change[this_mask_no_change], this_vec_neg_log_pval[this_mask_no_change], s=1, c='gray')
     plt.scatter(this_vec_change[this_mask_pos_change], this_vec_neg_log_pval[this_mask_pos_change], s=3, c='red')
     plt.scatter(this_vec_change[this_mask_neg_change], this_vec_neg_log_pval[this_mask_neg_change], s=3, c='blue')
     plt.axhline(y=thresh_neg_log_pval, c='gray', ls='--')
+    plt.axvline(x=-thresh_change, c='gray', ls='--')
+    plt.axvline(x=thresh_change, c='gray', ls='--')
     plt.xlabel(f'% Mod. level change')
     plt.ylabel('$-log_{10}$ p-val')
     plt.title(f'${dict_display_mod[mod]}$')
@@ -75,8 +89,8 @@ for subplot_ind, mod in enumerate(['psi', 'm6A']):
     plt.text(0.01, 1.01, f'{this_num_neg_change} down', c='blue', ha='left', transform=plt.gca().transAxes)
     plt.text(0.99, 1.01, f'{this_num_pos_change} up', c='red', ha='right', transform=plt.gca().transAxes)
 if replicates:
-    plt.suptitle(f'{cond1} versus {cond0}, with replicates')
+    plt.suptitle(f'{cond1} versus {cond0}, count$\geq${thresh_count}, with replicates')
     plt.savefig(os.path.join(img_out, f'volcano_{exp}_{cond0}_{cond1}_replicates_diff_sites.png'), bbox_inches='tight')
 else:
-    plt.suptitle(f'{cond1} versus {cond0}')
-    plt.savefig(os.path.join(img_out, f'volcano_{exp}_{cond0}_{cond1}_diff_sites.png'), bbox_inches='tight')
+    plt.suptitle(f'{cond1} versus {cond0}, count$\geq${thresh_count}')
+    plt.savefig(os.path.join(img_out, f'volcano_{exp}_{cond0}_{cond1}_count{thresh_count}_diff_sites.png'), bbox_inches='tight')
