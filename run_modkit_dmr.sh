@@ -15,12 +15,12 @@ out_dir="/prj/TRR319_RMaP_BaseCalling_RNA004/Adrian/HEK293_M3I/dmr"
 ref="/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa"
 
 cond0=DMSO_rep1
-cond1=M3I_6h
+cond1=M3I_24h_rep1
 
-mod=m6A
-base=A
-#mod=psi
-#base=T
+#mod=m6A
+#base=A
+mod=psi
+base=T
 
 modkit dmr pair \
   -a ${in_dir}/${cond0}.cov10.bedmethyl.gz \
