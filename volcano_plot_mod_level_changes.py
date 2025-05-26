@@ -20,7 +20,7 @@ def get_filtered_df_by_motifs(in_df, in_motifs):
             df_out.append(this_row)
     return pd.DataFrame(df_out)
 
-def get_vec_change_neg_log_pval(in_dmr_file, in_thresh_count, in_motifs):
+def get_vec_change_neg_log_pval(in_dmr_file, in_thresh_count, in_motifs=None):
     change_pval_score = []
     sites = []
     for this_chunk in tqdm(pd.read_csv(in_dmr_file, sep='\t', dtype={'chrom': str}, iterator=True, chunksize=10000)):
@@ -30,7 +30,8 @@ def get_vec_change_neg_log_pval(in_dmr_file, in_thresh_count, in_motifs):
                 * (this_chunk['sample_a_total'] >= in_thresh_count)
                 * (this_chunk['sample_b_total'] >= in_thresh_count)
                 ]
-            this_chunk_valid = get_filtered_df_by_motifs(this_chunk_valid, in_motifs)
+            if in_motifs:
+                this_chunk_valid = get_filtered_df_by_motifs(this_chunk_valid, in_motifs)
             if len(this_chunk_valid):
                 change_pval_score.append(this_chunk_valid[['balanced_effect_size', 'balanced_p_value', 'score']].values)
         else:
@@ -39,7 +40,8 @@ def get_vec_change_neg_log_pval(in_dmr_file, in_thresh_count, in_motifs):
                 * (this_chunk['sample_a_total'] >= in_thresh_count)
                 * (this_chunk['sample_b_total'] >= in_thresh_count)
                 ]
-            this_chunk_valid = get_filtered_df_by_motifs(this_chunk_valid, in_motifs)
+            if in_motifs:
+                this_chunk_valid = get_filtered_df_by_motifs(this_chunk_valid, in_motifs)
             if len(this_chunk_valid):
                 change_pval_score.append(this_chunk_valid[['effect_size', 'p_value', 'score']].values)
         if len(this_chunk_valid):
@@ -96,9 +98,14 @@ data_dir = f'{home}/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
 img_out = f'{home}/img_out/RNA004_psi_KD_OE_analysis'
 os.makedirs(img_out, exist_ok=True)
 
+# dict_display_mod = {
+#     'm6A': 'm^6A',
+#     'psi': '\Psi'
+# }
+
 dict_display_mod = {
-    'm6A': 'm^6A',
-    'psi': '\Psi'
+    'm6A': 'A',
+    'psi': 'U'
 }
 
 exp = 'HEK293_M3I'
@@ -119,19 +126,23 @@ thresh_score = 2.0
 thresh_count = 50
 thresh_change = 25.0
 
+# mod_motifs = {
+#     'm6A': [
+#             'GGACT', 'GGACA', 'GAACT', 'AGACT', 'GGACC', 'TGACT',
+#             'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
+#             'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
+#     ],
+#     'psi': ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
+#            [f'{pos1}{pos2}T{pos4}{pos5}'
+#             for pos1 in ['A', 'C', 'G', 'T']
+#             for pos2 in ['A', 'G']
+#             for pos4 in ['A', 'G']
+#             for pos5 in ['A', 'C', 'G', 'T']
+#             ]
+# }
 mod_motifs = {
-    'm6A': [
-            'GGACT', 'GGACA', 'GAACT', 'AGACT', 'GGACC', 'TGACT',
-            'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
-            'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
-    ],
-    'psi': ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
-           [f'{pos1}{pos2}T{pos4}{pos5}'
-            for pos1 in ['A', 'C', 'G', 'T']
-            for pos2 in ['A', 'G']
-            for pos4 in ['A', 'G']
-            for pos5 in ['A', 'C', 'G', 'T']
-            ]
+    'm6A': None,
+    'psi': None
 }
 
 plt.figure(figsize=(10, 5))
@@ -140,7 +151,8 @@ for subplot_ind, mod in enumerate(['psi', 'm6A']):
         this_dmr_file = os.path.join(data_dir, exp, 'dmr', f'{cond0}_{cond1}_replicates.cov10.{mod}.diff_sites.dmr')
     else:
         this_dmr_file = os.path.join(data_dir, exp, 'dmr', f'{cond0}_{cond1}.cov10.{mod}.diff_sites.dmr')
-    this_vec_change, this_vec_neg_log_pval, this_vec_score, this_df_sites = get_vec_change_neg_log_pval(this_dmr_file, thresh_count, mod_motifs[mod])
+    # this_vec_change, this_vec_neg_log_pval, this_vec_score, this_df_sites = get_vec_change_neg_log_pval(this_dmr_file, thresh_count, mod_motifs[mod])
+    this_vec_change, this_vec_neg_log_pval, this_vec_score, this_df_sites = get_vec_change_neg_log_pval(this_dmr_file, thresh_count)
     this_mask_no_change, this_mask_neg_change, this_mask_pos_change, this_num_neg_change, this_num_pos_change = get_mask(this_vec_change, this_vec_neg_log_pval, thresh_change, thresh_neg_log_pval)
     for this_change, this_mask in zip(['up', 'down'], [this_mask_pos_change, this_mask_neg_change]):
         if this_mask.any():
