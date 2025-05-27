@@ -14,3 +14,12 @@ python3 volcano_plot_mod_level_changes.py \
 will create the following volcano plot in the output directory specified.
 
 ![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/volcano_plot.png)
+
+Other options:
+- `--thresh_neg_log_pval`: (negative log10) p-value threshold for statistically significant changes, default 2.0
+- `--thresh_change`: threshold for absolute change in modification percentage, default 25.0
+- `--thresh_count`: minimum coverage cut-off for sites, default 50
+- `--filter_by_motifs`: filters sites by preset motifs, DRACH for A and TRUB1 / PUS1 / PUS7 motifs for U; need to supply reference (see next)
+- `--reference`: fasta reference file used to align the sites, for example, `/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa`
+- `--output_logo`: outputs the sequence logo as well as reference locations of up / down sites, needs reference
+- `--balanced`: uses sample-size adjusted p-values and changes, only available for DMR output run on replicates
