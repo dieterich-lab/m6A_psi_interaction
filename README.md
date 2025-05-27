@@ -12,3 +12,5 @@ python3 volcano_plot_mod_level_changes.py \
 --out_dir ${out_dir}
 ```
 will create a volcano plot in the output directory specified.
+
+!(/assets/images/volcano_plot.png)
