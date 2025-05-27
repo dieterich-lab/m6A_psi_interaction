@@ -103,17 +103,28 @@ def plot_logo(in_df_sites, in_mask, in_mod, in_change, in_ref, in_args, span=3):
 def main():
     home = os.environ['HOME']
     parser = ArgumentParser()
-    parser.add_argument('--dmr_base_A', type=str, required=True)
-    parser.add_argument('--dmr_base_U', type=str, required=True)
-    parser.add_argument('--out_dir', type=str, default=home)
-    parser.add_argument('--plot_name', type=str, default='volcano_plot.png')
-    parser.add_argument('--thresh_neg_log_pval', type=float, default=2.0)
-    parser.add_argument('--thresh_count', type=int, default=50)
-    parser.add_argument('--thresh_change', type=float, default=25.0)
-    parser.add_argument('--reference', type=str, default=None)
-    parser.add_argument('--balanced', action='store_true')
-    parser.add_argument('--filter_by_motifs', action='store_true')
-    parser.add_argument('--output_logo', action='store_true')
+    parser.add_argument('--dmr_base_A', type=str, required=True,
+                        help='modkit DMR output for base A')
+    parser.add_argument('--dmr_base_U', type=str, required=True,
+                        help='modkit DMR output for base U')
+    parser.add_argument('--out_dir', type=str, default=home,
+                        help='output directory')
+    parser.add_argument('--plot_name', type=str, default='volcano_plot.png',
+                        help='name of volcano plot')
+    parser.add_argument('--thresh_neg_log_pval', type=float, default=2.0,
+                        help='threshold for negative log p-value')
+    parser.add_argument('--thresh_count', type=int, default=50,
+                        help='threshold for site coverage')
+    parser.add_argument('--thresh_change', type=float, default=25.0,
+                        help='threshold for effect size')
+    parser.add_argument('--reference', type=str, default=None,
+                        help='reference fasta, must be the same one used for read alignment')
+    parser.add_argument('--balanced', action='store_true',
+                        help='use balanced effect size and p-value, only available with replicates')
+    parser.add_argument('--filter_by_motifs', action='store_true',
+                        help='filter sites by pre-defined m6A and psi motifs')
+    parser.add_argument('--output_logo', action='store_true',
+                        help='output sequence context of up / down sites and their locations')
     args = parser.parse_args()
 
     if args.filter_by_motifs or args.output_logo:
