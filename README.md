@@ -12,7 +12,7 @@ scipy==1.8.1
 tqdm==4.64.1
 ```
 
-## Volcano plots
+## Volcano plot
 Uses output of `modkit dmr pair` to compare sites that are up- or down-regulated in their modification levels.
 
 Basic example:
@@ -34,3 +34,19 @@ Other options:
 - `--reference`: fasta reference file used to align the sites, for example, `/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa`
 - `--output_logo`: outputs the sequence logo as well as reference locations of up / down sites, needs reference
 - `--balanced`: uses sample-size adjusted p-values and changes, only available for DMR output run on replicates
+
+## Exon junction
+This script computes the distribution of site modifications that are within / further away from a certain margin of exon edges. The following example uses the zipped data in `assets/data/chr1.exon_jcn_data.zip`:
+```
+python3 hist_mod_level_near_exon_junction.py \
+--gtf_exon
+./assets/data/chr1.exons.GRCh38.102.gtf
+--bedmethyl
+./assets/data/chr1.CTRL.cov10.bedmethyl
+--mod_code
+a
+--out_file
+${out_dir}/hist_exon_mod/hist_mod_chr1_a.png
+```
+![m6A](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_a.png)
+![psi](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_17802.png)
