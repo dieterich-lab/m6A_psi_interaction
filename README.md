@@ -63,7 +63,7 @@ Note: For the purpose of speed optimization, the input exon gtf and bedmethyl fi
 # Upstream pipelines with ONT software
 The following steps are performed to generate bedmethyl and dmr files for the aforementioned analyses.
 
-## Note on dorado v1.0.0
+## dorado v1.0.0
 The new version of dorado implemented new modification models for 2-O-Methyl entities.
 To run basecalling:
 ```
@@ -87,7 +87,7 @@ dorado aligner ${index} ${in_bam} --mm2-opts "-x splice --junc-bed ${junc} -k 14
 ```
 According to ONT's documentation, the alignment can be done simultaneously with basecalling. However, I have not tested it myself.
 
-## Note on modkit v0.4.2
+## modkit v0.4.2
 To generate site-level modification levels from mapped modbam files:
 ```
 module load modkit/0.4.2
