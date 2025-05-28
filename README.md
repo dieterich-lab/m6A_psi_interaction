@@ -1,5 +1,16 @@
 # Analysis scripts for m6A-psi interaction
-Requires packages `matplotlib` and `logomaker`
+Required packages (version numbers not critical):
+```
+biopython==1.80
+logomaker==0.8
+matplotlib==3.10.3
+numpy==1.23.5
+pandas==2.2.3
+pybedtools==0.10.0
+pysam==0.22.0
+scipy==1.8.1
+tqdm==4.64.1
+```
 
 ## Volcano plots
 Uses output of `modkit dmr pair` to compare sites that are up- or down-regulated in their modification levels.
