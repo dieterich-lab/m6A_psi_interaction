@@ -48,5 +48,11 @@ a
 --out_file
 ${out_dir}/hist_exon_mod/hist_mod_chr1_a.png
 ```
-![m6A](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_a.png)
-![psi](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_17802.png)
+
+m6A (`--mod_code a`) in chr1
+
+![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_a.png)
+
+psi (`--mod_code 17802`)
+
+![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_17802.png)
