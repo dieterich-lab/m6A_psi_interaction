@@ -61,7 +61,7 @@ The exon junction margin can be adjusted by `--exon_junction_margin`.
 Note: For the purpose of speed optimization, the input exon gtf and bedmethyl files are expected to be filtered such sites are within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
 
 # Upstream pipelines with ONT software
-The following steps are performed to generate bedmethyl and dmr files for the aforementioned analyses.
+The following steps are performed to generate bedmethyl and dmr files as inputs for the above analyses.
 
 ## dorado v1.0.0
 The new version of dorado implemented new modification models for 2-O-Methyl entities.
@@ -85,7 +85,7 @@ in_bam=/prj/TRR319_RMaP_BaseCalling_RNA004/Isabel/20250512_HEK293_M3I/dorado_v1/
 
 dorado aligner ${index} ${in_bam} --mm2-opts "-x splice --junc-bed ${junc} -k 14 --secondary=no" > ${out_bam}
 ```
-According to ONT's documentation, the alignment can be done simultaneously with basecalling. However, I have not tested it myself.
+According to dorado's documentation, the alignment can be done simultaneously with basecalling. However, I have not tested it myself.
 
 ## modkit v0.4.2
 To generate site-level modification levels from mapped modbam files:
