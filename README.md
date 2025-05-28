@@ -59,3 +59,29 @@ psi (`--mod_code 17802`)
 
 The exon junction margin can be adjusted by `--exon_junction_margin`.
 Note: For the purpose of speed optimization, the input exon gtf and bedmethyl files are expected to be filtered such sites are within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
+
+## Note on dorado v1.0.0
+The new version of dorado implemented new modification models for 2-O-Methyl entities.
+To run basecalling:
+```
+module load dorado/1.0.0
+
+model=${model_dir}/rna004_130bps_sup@v5.2.0
+
+dorado basecaller ${model} ${pod5} \
+--output-dir ${outdir} \
+--recursive \
+--modified-bases m5C_2OmeC inosine_m6A_2OmeA pseU_2OmeU 2OmeG \
+--estimate-poly-a
+```
+This will generate an unmapped modbam file in ${outdir}. To align it *directly* to a reference, without extracting the fastq. For example:
+```
+index=/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.mmi
+junc=/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.bed
+in_bam=/prj/TRR319_RMaP_BaseCalling_RNA004/Isabel/20250512_HEK293_M3I/dorado_v1/HEK293_M3I_24h_1/calls_*.bam
+
+dorado aligner ${index} ${in_bam} --mm2-opts "-x splice --junc-bed ${junc} -k 14 --secondary=no" > ${out_bam}
+```
+According to ONT's documentation, the alignment can be done simultaneously with basecalling. However, I have not tested it myself.
+
+## Note on modkit
