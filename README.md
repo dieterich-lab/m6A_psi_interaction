@@ -57,4 +57,5 @@ psi (`--mod_code 17802`)
 
 ![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_17802.png)
 
-The exon junction margin can be adjusted by `--exon_junction_margin`. Note that for speed optimization, the input exon gtf and bedmethyl are expected to be filtered to within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
+The exon junction margin can be adjusted by `--exon_junction_margin`.
+Note: For the purpose of speed optimization, the input exon gtf and bedmethyl files are expected to be filtered such sites are within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
