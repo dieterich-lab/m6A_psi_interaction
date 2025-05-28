@@ -60,6 +60,9 @@ psi (`--mod_code 17802`)
 The exon junction margin can be adjusted by `--exon_junction_margin`.
 Note: For the purpose of speed optimization, the input exon gtf and bedmethyl files are expected to be filtered such sites are within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
 
+# Upstream pipelines with ONT software
+The following steps are performed to generate bedmethyl and dmr files for the aforementioned analyses.
+
 ## Note on dorado v1.0.0
 The new version of dorado implemented new modification models for 2-O-Methyl entities.
 To run basecalling:
@@ -84,4 +87,31 @@ dorado aligner ${index} ${in_bam} --mm2-opts "-x splice --junc-bed ${junc} -k 14
 ```
 According to ONT's documentation, the alignment can be done simultaneously with basecalling. However, I have not tested it myself.
 
-## Note on modkit
+## Note on modkit v0.4.2
+To generate site-level modification levels from mapped modbam files:
+```
+module load modkit/0.4.2
+
+BAM=${BASE}/mapped.bam
+OUTPUT=${BASE}/modkit042.bedmethyl
+
+modkit pileup -t 36 --filter-threshold 0.95 ${BAM} ${OUTPUT}
+```
+
+To perform differential modification analysis on a specific base (A, T) between two different conditions with replicates:
+```
+ref="/biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa"
+
+base=A
+#base=T
+
+modkit dmr pair \
+  -a ${in_dir}/${cond0}_rep1.cov10.bedmethyl.gz \
+  -a ${in_dir}/${cond0}_rep2.cov10.bedmethyl.gz \
+  -b ${in_dir}/${cond1}_rep1.cov10.bedmethyl.gz \
+  -b ${in_dir}/${cond1}_rep2.cov10.bedmethyl.gz \
+  -o ${out_dir}/${cond0}_${cond1}_replicates.cov10.base${base}.dmr \
+  --ref ${ref} \
+  --base ${base} \
+  --threads 36
+```
