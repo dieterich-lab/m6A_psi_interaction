@@ -1,5 +1,5 @@
 # Analysis scripts for m6A-psi interaction
-Required packages (version numbers not critical):
+Test with python3.10. Required packages (version numbers not critical):
 ```
 biopython==1.80
 logomaker==0.8
