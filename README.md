@@ -1,5 +1,6 @@
 # Analysis scripts for m6A-psi interaction
-Test with python3.10. Required packages (version numbers not critical):
+
+The scripts have been tested with Python 3.10 with these package versions:
 ```
 biopython==1.80
 logomaker==0.8
@@ -10,6 +11,24 @@ pybedtools==0.10.0
 pysam==0.22.0
 scipy==1.8.1
 tqdm==4.64.1
+```
+
+To create a suitable Python virtual environment do this:
+
+```
+module load python3/3.10.13_deb12
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+
+The versions of the dependencies may be changed as needed. However, the scripts
+use the tkinter library. That is included in all the Python3 modules installed
+on the cluster, but not the in the standard Debian python package.
+To have it available with the system Python one needs to install it separately:
+
+```
+sudo apt-get install python3-tk
 ```
 
 ## Volcano plot
