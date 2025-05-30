@@ -39,14 +39,10 @@ Other options:
 This script computes the distribution of site modifications that are within / further away from a certain margin of exon edges. The following example uses the zipped data in `assets/data/chr1.exon_jcn_data.zip`:
 ```
 python3 hist_mod_level_near_exon_junction.py \
---gtf_exon
-./assets/data/chr1.exons.GRCh38.102.gtf
---bedmethyl
-./assets/data/chr1.CTRL.cov10.bedmethyl
---mod_code
-a
---out_file
-${out_dir}/hist_exon_mod/hist_mod_chr1_a.png
+--gtf_exon ./assets/data/chr1.exons.GRCh38.102.gtf \
+--bedmethyl ./assets/data/chr1.CTRL.cov10.bedmethyl \
+--mod_code a \
+--out_file ${out_dir}/hist_mod_chr1_a.png
 ```
 
 m6A (`--mod_code a`) in chr1
