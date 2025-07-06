@@ -15,12 +15,14 @@ mpl.rcParams['xtick.major.size'] = 1.5
 mpl.rcParams['ytick.major.size'] = 1.5
 mpl.rcParams['lines.linewidth'] = 0.5
 # mpl.rcParams['font.family'] = 'Arial'
-# FMT = 'svg'
-# fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi, transparent=True)
-FMT = 'png'
-fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
+FMT = 'svg'
+fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi, transparent=True)
+# FMT = 'png'
+# fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
 ######################################################################
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr, spearmanr, trim_mean
+
 
 img_out = '/home/achan/img_out/m6A_psi_cross_talk'
 os.makedirs(img_out, exist_ok=True)
@@ -53,6 +55,12 @@ flierprops = dict(marker='o', markerfacecolor='none', markersize=2, markeredgeco
                   alpha=0.5, rasterized=True)
 xy_ticks = np.int32(bin_edges * 100)
 
+# trim_q = 0.0
+# trimmed_mean_m6A = [trim_mean(x, trim_q) for x in binned_m6A]
+trimmed_mean_m6A = [np.median(x) for x in binned_m6A]
+binned_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+# spearman_rho, spearman_pval = spearmanr(trimmed_mean_m6A, binned_centers)
+pearson_rho, pearson_pval = pearsonr(trimmed_mean_m6A, binned_centers)
 
 ### boxplot ###
 plt.figure(figsize=(5*cm, 5*cm))
@@ -60,25 +68,26 @@ plt.boxplot(binned_m6A, flierprops=flierprops)
 plt.ylim([-0.01, 1.05])
 plt.xticks(np.arange(len(bin_edges)) + 0.5, xy_ticks)
 plt.yticks(bin_edges, xy_ticks)
-plt.xlabel(f"frac(${dict_mod_display['psi']}$) per read")
-plt.ylabel(f"frac(${dict_mod_display['m6A']}$) per read")
+plt.xlabel(f"occ(${dict_mod_display['psi']}$) per read")
+plt.ylabel(f"occ(${dict_mod_display['m6A']}$) per read")
+#plt.title(fr'$\rho$={pearson_rho:.3f}, p-value={pearson_pval:.3f}'+f'(\n{trim_q*100:.0f}% outlier trimmed)')
+plt.title(fr'$\rho$={pearson_rho:.3f}, p-value={pearson_pval:.3f}')
 plt.savefig(os.path.join(img_out, f'boxplot.{FMT}'), **fig_kwargs)
 
 ### outlier ###
-
-top_reads = 100
-label = f'Median, top {top_reads}'
-top_psi = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_psi]
-top_m6A = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_m6A]
-top_color = 'k'
+# top_reads = 100
 plt.figure(figsize=(5*cm, 5*cm))
-plt.plot(np.arange(1, len(bin_edges)), top_m6A, c=top_color, ls='-', label=label)
-plt.plot(np.arange(1, len(bin_edges)), top_m6A, f'{top_color}o', markersize=2)
-plt.legend(loc='lower left')
+for top_reads, top_color in zip([100, 1000, 1000000], ['black', 'gray', 'silver']):
+    label = f'Median, top {top_reads:.0E} reads'
+    top_psi = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_psi]
+    top_m6A = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_m6A]
+    plt.plot(np.arange(1, len(bin_edges)), top_m6A, c=top_color, ls='-', label=label)
+    plt.plot(np.arange(1, len(bin_edges)), top_m6A, c=top_color, marker='o', markersize=2)
+plt.legend(loc='lower right')
 plt.xticks(np.arange(len(bin_edges)) + 0.5, xy_ticks)
 plt.ylim([-0.01, 1.05])
 plt.yticks(bin_edges, xy_ticks)
-plt.xlabel(f"frac(${dict_mod_display['psi']}$) per read")
-plt.ylabel(f"frac(${dict_mod_display['m6A']}$) per read")
+plt.xlabel(f"occ(${dict_mod_display['psi']}$) per read")
+plt.ylabel(f"occ(${dict_mod_display['m6A']}$) per read")
 plt.tight_layout()
 plt.savefig(os.path.join(img_out, f'outlier.{FMT}'), **fig_kwargs)
