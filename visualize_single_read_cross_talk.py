@@ -76,14 +76,16 @@ plt.savefig(os.path.join(img_out, f'boxplot.{FMT}'), **fig_kwargs)
 
 ### outlier ###
 # top_reads = 100
+arr_top_reads = [100, 1000, 10000, 100000, 1000000]
+arr_colors = [str(this_float) for this_float in np.linspace(0, 0.5, len(arr_top_reads))]
 plt.figure(figsize=(5*cm, 5*cm))
-for top_reads, top_color in zip([100, 1000, 1000000], ['black', 'gray', 'silver']):
-    label = f'Median, top {top_reads:.0E} reads'
+for top_reads, top_color in zip(arr_top_reads, arr_colors):
+    label = f'Top {top_reads:.0E} reads'
     top_psi = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_psi]
     top_m6A = [np.median(np.sort(this_bin)[-top_reads:]) for this_bin in binned_m6A]
     plt.plot(np.arange(1, len(bin_edges)), top_m6A, c=top_color, ls='-', label=label)
     plt.plot(np.arange(1, len(bin_edges)), top_m6A, c=top_color, marker='o', markersize=2)
-plt.legend(loc='lower right')
+plt.legend(title='Median', loc='lower right')
 plt.xticks(np.arange(len(bin_edges)) + 0.5, xy_ticks)
 plt.ylim([-0.01, 1.05])
 plt.yticks(bin_edges, xy_ticks)
