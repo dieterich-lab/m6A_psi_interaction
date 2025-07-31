@@ -3,12 +3,12 @@ import sys
 import pandas as pd
 import numpy as np
 import matplotlib as mpl
+mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Bio import SeqIO
 import logomaker
 from argparse import ArgumentParser
-mpl.use('TkAgg')
 
 
 def get_filtered_df_by_motifs(in_df, in_ref, in_motifs):
