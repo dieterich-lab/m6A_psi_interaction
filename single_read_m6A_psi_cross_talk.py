@@ -45,15 +45,15 @@ def get_mod_mean_occupancy(in_read, min_locs=thresh_min_locs):
 ########################################################################################################################
 ### R002 ###############################################################################################################
 ########################################################################################################################
-# mod_tags = {
-#     'm6A': ('N', 0, 21891),
-#     'psi': ('N', 0, 17802)
-# }
-#
-# base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling/Adrian/results/psico-mAFiA_v1'
-#
-# ds = 'HEK293_WT_R002'
-# bam_file = os.path.join(base_dir, 'HEK293/WT_P2/chrALL.mAFiA.reads.bam')
+mod_tags = {
+    'm6A': ('N', 0, 21891),
+    'psi': ('N', 0, 17802)
+}
+
+base_dir = '/home/achan/prj/TRR319_RMaP_BaseCalling/Adrian/results/psico-mAFiA_v1'
+
+ds = 'HEK293_WT_R002'
+bam_file = os.path.join(base_dir, 'HEK293/WT_P2/chrALL.mAFiA.reads.bam')
 
 # ds = 'M3KO'
 # bam_file = os.path.join(base_dir, 'HEK293T_Mettl3_KO/merged/chrALL.mAFiA.reads.bam')
@@ -70,16 +70,35 @@ def get_mod_mean_occupancy(in_read, min_locs=thresh_min_locs):
 ########################################################################################################################
 ### R004 ###############################################################################################################
 ########################################################################################################################
-mod_tags = {
-    'm6A': ('A', 0, 'a'),
-    'psi': ('T', 0, 17802)
-}
+# mod_tags = {
+#     'm6A': ('A', 0, 'a'),
+#     'psi': ('T', 0, 17802)
+# }
+
+# base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Isabel/20250224_HEK293_psU_kds_RTA/Dorado_082'
+#
+# ds = 'HEK293_ctrl_R004'
+# bam_file = os.path.join(base_dir, 'HEK293_ctrl_RTA/calls_2025-02-26_T06-44-51.bam')
+
+# ds = 'HEK293_TRUB1_kd'
+# bam_file = os.path.join(base_dir, 'HEK293_TRUB1_kd_RTA/calls_2025-02-26_T06-43-59.bam')
+
+########################################################################################################################
+m6a_motifs = '_withoutT'
 
 mod_motifs = {
+    # 'm6A': [
+    #         'GGACT', 'GGACA', 'GAACT', 'AGACT', 'GGACC', 'TGACT',
+    #         'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
+    #         'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
+    # ],
+    ### m6A with T ###
+    # 'm6A': [
+    #     'GGACT', 'GAACT', 'AGACT', 'TGACT', 'AAACT', 'TGACA', 'TAACT', 'TGACC', 'TAACA', 'TAACC'
+    # ],
+    ### m6A without T ###
     'm6A': [
-            'GGACT', 'GGACA', 'GAACT', 'AGACT', 'GGACC', 'TGACT',
-            'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
-            'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
+        'GGACA', 'GGACC', 'GAACA', 'AGACA', 'AGACC', 'GAACC','AAACA', 'AAACC'
     ],
     'psi': ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
            [f'{pos1}{pos2}T{pos4}{pos5}'
@@ -89,16 +108,6 @@ mod_motifs = {
             for pos5 in ['A', 'C', 'G', 'T']
             ]
 }
-
-base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Isabel/20250224_HEK293_psU_kds_RTA/Dorado_082'
-
-ds = 'HEK293_ctrl_R004'
-bam_file = os.path.join(base_dir, 'HEK293_ctrl_RTA/calls_2025-02-26_T06-44-51.bam')
-
-# ds = 'HEK293_TRUB1_kd'
-# bam_file = os.path.join(base_dir, 'HEK293_TRUB1_kd_RTA/calls_2025-02-26_T06-43-59.bam')
-
-########################################################################################################################
 
 single_read_mean_occupancy = []
 with pysam.AlignmentFile(bam_file, 'rb', check_sq=False) as bam:
@@ -114,5 +123,5 @@ vec_m6A, vec_psi = np.vstack([
 ]).T
 num_valid_reads = len(vec_m6A)
 
-out_file = os.path.join(base_dir, f'single_read_frac_m6A_psi_{ds}.npz')
+out_file = os.path.join(base_dir, f'single_read_frac_m6A{m6a_motifs}_psi_{ds}.npz')
 np.savez(out_file, vec_m6A=vec_m6A, vec_psi=vec_psi)

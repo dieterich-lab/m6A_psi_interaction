@@ -26,11 +26,11 @@ df_merged = pd.merge(df_annot, df_mafia,
                      suffixes=('_annot', '_mafia')
                      )
 
-thresh_mod_ratio = 80.0
+thresh_mod_ratio = 50.0
 thresh_confidence = 50.0
 
-# mod = 'm6A'
-mod = 'psU'
+mod = 'm6A'
+# mod = 'psU'
 
 out_file = os.path.join(
     res_dir,

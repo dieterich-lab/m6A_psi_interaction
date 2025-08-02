@@ -32,8 +32,10 @@ dict_mod_display = {
     'psi': '\psi'
 }
 
+m6a_motifs = '_withoutT'
+
 base_dir = '/home/achan/prj/TRR319_RMaP_BaseCalling/Adrian/results/psico-mAFiA_v1'
-in_file = os.path.join(base_dir, f'single_read_frac_m6A_psi_HEK293_WT_R002.npz')
+in_file = os.path.join(base_dir, f'single_read_frac_m6A{m6a_motifs}_psi_HEK293_WT_R002.npz')
 temp = np.load(in_file)
 vec_m6A = temp['vec_m6A']
 vec_psi = temp['vec_psi']
@@ -60,7 +62,7 @@ xy_ticks = np.int32(bin_edges * 100)
 trimmed_mean_m6A = [np.median(x) for x in binned_m6A]
 binned_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
 # spearman_rho, spearman_pval = spearmanr(trimmed_mean_m6A, binned_centers)
-pearson_rho, pearson_pval = pearsonr(trimmed_mean_m6A, binned_centers)
+# pearson_rho, pearson_pval = pearsonr(trimmed_mean_m6A, binned_centers)
 
 ### boxplot ###
 plt.figure(figsize=(5*cm, 5*cm))
@@ -71,8 +73,8 @@ plt.yticks(bin_edges, xy_ticks)
 plt.xlabel(f"occ(${dict_mod_display['psi']}$) per read")
 plt.ylabel(f"occ(${dict_mod_display['m6A']}$) per read")
 #plt.title(fr'$\rho$={pearson_rho:.3f}, p-value={pearson_pval:.3f}'+f'(\n{trim_q*100:.0f}% outlier trimmed)')
-plt.title(fr'$\rho$={pearson_rho:.3f}, p-value={pearson_pval:.3f}')
-plt.savefig(os.path.join(img_out, f'boxplot.{FMT}'), **fig_kwargs)
+# plt.title(fr'$\rho$={pearson_rho:.3f}, p-value={pearson_pval:.3f}')
+plt.savefig(os.path.join(img_out, f'boxplot{m6a_motifs}.{FMT}'), **fig_kwargs)
 
 ### outlier ###
 # top_reads = 100
@@ -92,4 +94,4 @@ plt.yticks(bin_edges, xy_ticks)
 plt.xlabel(f"occ(${dict_mod_display['psi']}$) per read")
 plt.ylabel(f"occ(${dict_mod_display['m6A']}$) per read")
 plt.tight_layout()
-plt.savefig(os.path.join(img_out, f'outlier.{FMT}'), **fig_kwargs)
+plt.savefig(os.path.join(img_out, f'outlier{m6a_motifs}.{FMT}'), **fig_kwargs)
