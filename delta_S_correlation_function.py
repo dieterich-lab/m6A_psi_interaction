@@ -3,34 +3,30 @@ import pandas as pd
 import pickle
 from functools import reduce
 import matplotlib as mpl
-mpl.use('TkAgg')
-#######################################################################
-cm = 1/2.54  # centimeters in inches
-gr = 1.618
-dpi = 1200
-mpl.rcParams['figure.dpi'] = dpi
-mpl.rcParams['savefig.dpi'] = dpi
-mpl.rcParams['font.size'] = 8
-mpl.rcParams['legend.fontsize'] = 6
-mpl.rcParams['xtick.labelsize'] = 8
-mpl.rcParams['ytick.labelsize'] = 8
-mpl.rcParams['xtick.major.size'] = 4
-mpl.rcParams['ytick.major.size'] = 4
-mpl.rcParams['lines.linewidth'] = 1
-mpl.rcParams['font.family'] = 'Arial'
-# FMT = 'svg'
-# fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi, transparent=True)
-FMT = 'png'
-fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
-#######################################################################
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import pybedtools
 import numpy as np
 from tqdm import tqdm
 from scipy import stats
+from argparse import ArgumentParser
 
 
-def get_merged_df_with_delta(in_dfs, compare_conds):
+def configure_matplotlib(dpi=1200, font_size=8):
+    mpl.rcParams['figure.dpi'] = dpi
+    mpl.rcParams['savefig.dpi'] = dpi
+    mpl.rcParams['font.size'] = font_size
+    mpl.rcParams['legend.fontsize'] = font_size - 2
+    mpl.rcParams['xtick.labelsize'] = font_size
+    mpl.rcParams['ytick.labelsize'] = font_size
+    mpl.rcParams['xtick.major.size'] = 4
+    mpl.rcParams['ytick.major.size'] = 4
+    mpl.rcParams['lines.linewidth'] = 1
+    mpl.rcParams['font.family'] = 'Arial'
+
+
+def get_merged_df_with_delta(in_dfs, compare_conds, writer):
+
     merged_fields = [
         'chrom',
         'chromStart',
@@ -60,6 +56,7 @@ def get_merged_df_with_delta(in_dfs, compare_conds):
 
 
 def get_neighboring_sites_on_exon(in_row, dict_annots, second_mod_bedtool):
+    
     if in_row['chrom'] not in dict_annots.keys():
         return []
     in_row_bedtool = pybedtools.BedTool.from_dataframe(in_row.to_frame().T)
@@ -72,6 +69,7 @@ def get_neighboring_sites_on_exon(in_row, dict_annots, second_mod_bedtool):
 
 
 def get_vec_dist_delta_from_site_df(in_df, sec_bedtool, annots):
+    
     dist_delta = []
     print(f'Processing {len(in_df)} sites...')
     for _, this_row in tqdm(in_df.iterrows()):
@@ -84,6 +82,7 @@ def get_vec_dist_delta_from_site_df(in_df, sec_bedtool, annots):
 
 
 def get_binned_dist_delta(in_vec_dist, in_vec_delta, in_bin_range, in_bin_width):
+    
     bin_edges = np.arange(in_bin_range[0], in_bin_range[1]+in_bin_width, in_bin_width)
     bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
     num_bins = len(bin_edges) - 1
@@ -93,121 +92,191 @@ def get_binned_dist_delta(in_vec_dist, in_vec_delta, in_bin_range, in_bin_width)
         bin_end = bin_edges[bin_i+1]
         mask_dist = (in_vec_dist >= bin_start) * (in_vec_dist < bin_end)
         if mask_dist.any():
-            # binned_delta.append(np.median(in_vec_delta[mask_dist]))
-            # binned_delta.append(np.mean(in_vec_delta[mask_dist]))
-            # binned_delta.append(np.max(in_vec_delta[mask_dist]))
             binned_delta.append(in_vec_delta[mask_dist])
         else:
             binned_delta.append(np.nan)
     return bin_centers, binned_delta
 
 
-base_dir = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian'
-writer = 'PUS7'
-cond = 'KD'
-# cond = 'OE'
+def load_chromosome_annotations(annot_dir):
+    
+    print(f'Loading chromosome annotations from: {annot_dir}')
+    chr_annots = {}
+    chromosomes = list(range(1, 23)) + ['X', 'Y', 'MT']
+    
+    for this_chr in tqdm(chromosomes, desc='Loading annotations'):
+        annot_file = os.path.join(annot_dir, f'chr{this_chr}.exons.GRCh38.102.gtf')
+        if os.path.exists(annot_file):
+            chr_annots[str(this_chr)] = pybedtools.BedTool(annot_file)
+        else:
+            print(f'  Warning: {annot_file} not found')
+    
+    return chr_annots
 
-img_out = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
 
-with open(os.path.join(base_dir, f'dfs_mod_filtered_{writer}.pkl'), 'rb') as pkl_in:
-    dfs_mod_cond = pickle.load(pkl_in)
+def plot_delta_histograms(merged_df_psi, merged_df_m6a, writer, cond, output_dir, 
+                          fmt='png', dpi=1200, transparent=False):
+    
+    cm = 1/2.54
+    fig_kwargs = dict(format=fmt, bbox_inches='tight', dpi=dpi, transparent=transparent)
+    
+    plt.figure(figsize=(10*cm, 5*cm))
+    plt.subplot(1, 2, 1)
+    plt.hist(merged_df_psi[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
+    plt.xlabel('$\Delta$S($\psi$)')
+    plt.ylabel('Site count')
+    plt.axvline(x=0, c='r')
+    plt.subplot(1, 2, 2)
+    plt.hist(merged_df_m6a[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
+    plt.xlabel('$\Delta$S(m6A)')
+    plt.ylabel('Site count')
+    plt.axvline(x=0, c='r')
+    plt.suptitle(f'{writer}-{cond} vs CTRL')
+    plt.tight_layout()
+    
+    output_file = os.path.join(output_dir, f'hist_mods_{writer}-{cond}.{fmt}')
+    plt.savefig(output_file, **fig_kwargs)
+    plt.close()
+    print(f'Saved histogram: {output_file}')
 
-annot_dir = '/home/adrian/Data/genomes/homo_sapiens/GRCh38_102/exons'
-chr_annots = {
-    str(this_chr): pybedtools.BedTool(os.path.join(annot_dir, f'chr{this_chr}.exons.GRCh38.102.gtf'))
-    for this_chr in list(range(1, 23)) + ['X', 'Y', 'MT']
-}
 
-merged_df_psi = get_merged_df_with_delta(dfs_mod_cond['17802'], ['CTRL', f'{writer}-{cond}'])
-merged_df_m6a = get_merged_df_with_delta(dfs_mod_cond['a'], ['CTRL', f'{writer}-{cond}'])
-
-plt.figure(figsize=(10*cm, 5*cm))
-plt.subplot(1, 2, 1)
-plt.hist(merged_df_psi[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
-plt.xlabel('$\Delta$S($\psi$)')
-plt.ylabel('Site count')
-plt.axvline(x=0, c='r')
-plt.subplot(1, 2, 2)
-plt.hist(merged_df_m6a[f'delta_{writer}-{cond}'], range=[-100, 100], bins=50, log=True)
-plt.xlabel('$\Delta$S(m6A)')
-plt.ylabel('Site count')
-plt.axvline(x=0, c='r')
-plt.suptitle(f'{writer}-{cond} vs CTRL')
-plt.tight_layout()
-plt.savefig(os.path.join(img_out, f'hist_mods_{writer}-{cond}.{FMT}'), **fig_kwargs)
-
-merged_df_m6a.iloc[:, 4] = merged_df_m6a[f'delta_{writer}-{cond}']
-m6a_bedtool = pybedtools.BedTool.from_dataframe(merged_df_m6a.iloc[:, :6])
-
-thresh_delta = 5
-
-# df_psi_same = merged_df_psi[
-#     (merged_df_psi[f'delta_{writer}-{cond}'] >= -thresh_delta)
-#     * (merged_df_psi[f'delta_{writer}-{cond}'] < thresh_delta)
-#     ]
-
-bin_range = [0, 2000]
-bin_width = 200
-
-if cond == 'KD':
-    df_psi_down = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] < -thresh_delta]
-    num_sites = len(df_psi_down)
-    psi_down_vec_dist, psi_down_vec_delta = get_vec_dist_delta_from_site_df(df_psi_down, m6a_bedtool, chr_annots)
-    psi_down_binned_dist, psi_down_binned_delta = get_binned_dist_delta(
-        psi_down_vec_dist, psi_down_vec_delta, bin_range, bin_width
-    )
-    psi_down_binned_delta_lower = np.array([np.quantile(this_bin, 0.01) for this_bin in psi_down_binned_delta])
-    psi_down_binned_delta_upper = np.array([np.quantile(this_bin, 0.99) for this_bin in psi_down_binned_delta])
-    psi_down_binned_delta_mean = 0.5 * (psi_down_binned_delta_upper + psi_down_binned_delta_lower)
-elif cond == 'OE':
-    df_psi_up = merged_df_psi[merged_df_psi[f'delta_{writer}-{cond}'] >= thresh_delta]
-    num_sites = len(df_psi_up)
-    psi_up_vec_dist, psi_up_vec_delta = get_vec_dist_delta_from_site_df(df_psi_up, m6a_bedtool, chr_annots)
-    psi_up_binned_dist, psi_up_binned_delta = get_binned_dist_delta(
-        psi_up_vec_dist, psi_up_vec_delta, bin_range, bin_width
-    )
-    psi_up_binned_delta_lower = np.array([np.quantile(this_bin, 0.01) for this_bin in psi_up_binned_delta])
-    psi_up_binned_delta_upper = np.array([np.quantile(this_bin, 0.99) for this_bin in psi_up_binned_delta])
-    psi_up_binned_delta_mean = 0.5 * (psi_up_binned_delta_upper + psi_up_binned_delta_lower)
-# psi_same_vec_dist, psi_same_vec_delta = get_vec_dist_delta_from_site_df(df_psi_same, m6a_bedtool, chr_annots)
-
-# psi_same_binned_dist, psi_same_binned_delta = get_binned_dist_delta(
-#     psi_same_vec_dist, psi_same_vec_delta, bin_range, bin_width
-# )
-# psi_down_binned_delta_mean = [stats.trim_mean(this_bin, 0.25) for this_bin in psi_down_binned_delta]
-# psi_up_binned_delta_mean = [stats.trim_mean(this_bin, 0.25) for this_bin in psi_up_binned_delta]
-# psi_up_binned_delta_mean = psi_up_binned_delta_lower - psi_up_binned_delta_upper
-
-xticks = np.int64(np.linspace(*bin_range, 5))
-
-plt.figure(figsize=(5*cm, 5*cm))
-# plt.scatter(psi_up_vec_dist, psi_up_vec_delta, s=1, c='gray', label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
-if cond == 'OE':
-    plt.scatter(psi_up_vec_dist, psi_up_vec_delta, s=1, c='gray')
+def plot_distance_correlation(vec_dist, vec_delta, binned_dist, binned_delta_mean,
+                              writer, cond, thresh_delta, num_sites, bin_range,
+                              output_dir, fmt='png', dpi=1200, transparent=False):
+    
+    cm = 1/2.54
+    fig_kwargs = dict(format=fmt, bbox_inches='tight', dpi=dpi, transparent=transparent)
+    xticks = np.int64(np.linspace(*bin_range, 5))
+    
+    plt.figure(figsize=(5*cm, 5*cm))
+    plt.scatter(vec_dist, vec_delta, s=1, c='gray')
     plt.axhline(y=0, c='g', ls='--')
-    plt.plot(psi_up_binned_dist, psi_up_binned_delta_mean, c='r', label='Trimmed mean')
-    plt.plot(psi_up_binned_dist, psi_up_binned_delta_mean, 'r.')
-elif cond == 'KD':
-    plt.scatter(psi_down_vec_dist, psi_down_vec_delta, s=1, c='gray')
-    plt.axhline(y=0, c='g', ls='--')
-    plt.plot(psi_down_binned_dist, psi_down_binned_delta_mean, c='r', label='Trimmed mean')
-    plt.plot(psi_down_binned_dist, psi_down_binned_delta_mean, 'r.')
-# plt.scatter(psi_down_vec_dist, psi_down_vec_delta, s=1, c='b', label=f'$\Delta$S($\psi$) < -{thresh_delta}')
-# plt.plot(psi_down_binned_dist, psi_down_binned_delta, 'b', label=f'$\Delta$S($\psi$) < -{thresh_delta}')
-# plt.plot(psi_same_binned_dist, psi_same_binned_delta, 'gray', label=f'-{thresh_delta} $\leq$ $\Delta$S($\psi$) < {thresh_delta}')
-# plt.plot(psi_up_binned_dist, psi_up_binned_delta, 'r', label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
-# plt.boxplot(psi_down_binned_delta, positions=psi_down_binned_dist, showfliers=False, label=f'$\Delta$S($\psi$) < -{thresh_delta}')
-# plt.boxplot(psi_up_binned_delta, positions=psi_up_binned_dist, widths=1, label=f'$\Delta$S($\psi$)$\geq${thresh_delta}')
-plt.xlim(bin_range)
-plt.ylim([-25, 25])
-plt.xticks(xticks)
-plt.xlabel('Distance from $\psi$ site on same exon (nts)')
-plt.ylabel('$\Delta$S(m6A)')
-# plt.plot(psi_up_binned_dist, psi_up_binned_delta_lower, c='b')
-if cond == 'OE':
-    plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)$\geq${thresh_delta}')
-elif cond == 'KD':
-    plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)<-{thresh_delta}')
-plt.legend()
-plt.savefig(os.path.join(img_out, f'dist_corr_m6a_from_psi_{writer}-{cond}_thresh{thresh_delta}.{FMT}'), **fig_kwargs)
-# plt.savefig(os.path.join(img_out, f'boxplot_m6a_from_psi_{writer}-{cond}_thresh{thresh_delta}.{FMT}'), **fig_kwargs)
+    plt.plot(binned_dist, binned_delta_mean, c='r', label='Trimmed mean')
+    plt.plot(binned_dist, binned_delta_mean, 'r.')
+    plt.xlim(bin_range)
+    plt.ylim([-25, 25])
+    plt.xticks(xticks)
+    plt.xlabel('Distance from $\psi$ site on same exon (nts)')
+    plt.ylabel('$\Delta$S(m6A)')
+    
+    if cond == 'OE':
+        plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)$\geq${thresh_delta}')
+    elif cond == 'KD':
+        plt.title(f'{writer}-{cond} vs CTRL\n{num_sites} sites with $\Delta$S($\psi$)<-{thresh_delta}')
+    
+    plt.legend()
+    output_file = os.path.join(output_dir, f'dist_corr_m6a_from_psi_{writer}-{cond}_thresh{thresh_delta}.{fmt}')
+    plt.savefig(output_file, **fig_kwargs)
+    plt.close()
+    print(f'Saved correlation plot: {output_file}')
+
+
+def main():
+    parser = ArgumentParser(description='Analyze correlation between psi and m6A modifications at different distances')
+    
+    parser.add_argument('--pickle_file', type=str, required=True,
+                        help='Pickle file with filtered modification dataframes')
+    parser.add_argument('--annot_dir', type=str, required=True,
+                        help='Directory containing exon annotation GTF files')
+    parser.add_argument('--output_dir', '-o', type=str, required=True,
+                        help='Output directory for plots')
+    parser.add_argument('--writer', type=str, default='TRUB1',
+                        help='Writer enzyme name (default: TRUB1)')
+    parser.add_argument('--condition', type=str, required=True, choices=['KD', 'OE'],
+                        help='Condition to analyze (KD or OE)')
+    parser.add_argument('--thresh_delta', type=float, default=5.0,
+                        help='Threshold for delta S filtering (default: 5.0)')
+    parser.add_argument('--bin_range', type=int, nargs=2, default=[0, 2000],
+                        help='Distance bin range (min max) (default: 0 2000)')
+    parser.add_argument('--bin_width', type=int, default=200,
+                        help='Width of distance bins (default: 200)')
+    parser.add_argument('--format', type=str, default='png', choices=['png', 'pdf', 'svg'],
+                        help='Output format (default: png)')
+    parser.add_argument('--dpi', type=int, default=1200,
+                        help='Resolution for output (default: 1200)')
+    parser.add_argument('--font_size', type=int, default=8,
+                        help='Font size for labels (default: 8)')
+    parser.add_argument('--transparent', action='store_true',
+                        help='Save with transparent background')
+    
+    args = parser.parse_args()
+    
+    configure_matplotlib(dpi=args.dpi, font_size=args.font_size)
+    
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    print(f'Loading data from: {args.pickle_file}')
+    with open(args.pickle_file, 'rb') as pkl_in:
+        dfs_mod_cond = pickle.load(pkl_in)
+    
+    chr_annots = load_chromosome_annotations(args.annot_dir)
+    
+    print('\nMerging psi dataframes...')
+    merged_df_psi = get_merged_df_with_delta(
+        dfs_mod_cond['17802'], 
+        ['CTRL', f'{args.writer}-{args.condition}'],
+        args.writer
+    )
+    print(f'  Merged psi sites: {len(merged_df_psi)}')
+    
+    print('\nMerging m6A dataframes...')
+    merged_df_m6a = get_merged_df_with_delta(
+        dfs_mod_cond['a'], 
+        ['CTRL', f'{args.writer}-{args.condition}'],
+        args.writer
+    )
+    print(f'  Merged m6A sites: {len(merged_df_m6a)}')
+    
+    plot_delta_histograms(
+        merged_df_psi, merged_df_m6a, args.writer, args.condition, 
+        args.output_dir, args.format, args.dpi, args.transparent
+    )
+    
+    merged_df_m6a_bed = merged_df_m6a.copy()
+    merged_df_m6a_bed.iloc[:, 4] = merged_df_m6a_bed[f'delta_{args.writer}-{args.condition}']
+    m6a_bedtool = pybedtools.BedTool.from_dataframe(merged_df_m6a_bed.iloc[:, :6])
+    
+    if args.condition == 'KD':
+        df_psi_filtered = merged_df_psi[
+            merged_df_psi[f'delta_{args.writer}-{args.condition}'] < -args.thresh_delta
+        ]
+        print(f'\nPsi sites with delta < -{args.thresh_delta}: {len(df_psi_filtered)}')
+    elif args.condition == 'OE':
+        df_psi_filtered = merged_df_psi[
+            merged_df_psi[f'delta_{args.writer}-{args.condition}'] >= args.thresh_delta
+        ]
+        print(f'\nPsi sites with delta >= {args.thresh_delta}: {len(df_psi_filtered)}')
+    
+    if len(df_psi_filtered) == 0:
+        print('No sites passed the threshold. Exiting.')
+        return
+    
+    vec_dist, vec_delta = get_vec_dist_delta_from_site_df(df_psi_filtered, m6a_bedtool, chr_annots)
+    
+    if len(vec_dist) == 0:
+        print('No neighboring sites found. Exiting.')
+        return
+    
+    print(f'Found {len(vec_dist)} distance-delta pairs')
+    
+    binned_dist, binned_delta = get_binned_dist_delta(
+        vec_dist, vec_delta, args.bin_range, args.bin_width
+    )
+    
+    binned_delta_lower = np.array([np.quantile(this_bin, 0.01) if not isinstance(this_bin, float) 
+                                   else np.nan for this_bin in binned_delta])
+    binned_delta_upper = np.array([np.quantile(this_bin, 0.99) if not isinstance(this_bin, float) 
+                                   else np.nan for this_bin in binned_delta])
+    binned_delta_mean = 0.5 * (binned_delta_upper + binned_delta_lower)
+    
+    plot_distance_correlation(
+        vec_dist, vec_delta, binned_dist, binned_delta_mean,
+        args.writer, args.condition, args.thresh_delta, len(df_psi_filtered),
+        args.bin_range, args.output_dir, args.format, args.dpi, args.transparent
+    )
+    
+    print('\nFinished')
+
+
+if __name__ == '__main__':
+    main()

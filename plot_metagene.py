@@ -1,31 +1,26 @@
 import os
 import pandas as pd
 import matplotlib as mpl
-mpl.use('TkAgg')
-#######################################################################
-cm = 1/2.54  # centimeters in inches
-gr = 1.618
-dpi = 1200
-mpl.rcParams['figure.dpi'] = dpi
-mpl.rcParams['savefig.dpi'] = dpi
-mpl.rcParams['font.size'] = 8
-mpl.rcParams['legend.fontsize'] = 6
-mpl.rcParams['xtick.labelsize'] = 8
-mpl.rcParams['ytick.labelsize'] = 8
-mpl.rcParams['xtick.major.size'] = 4
-mpl.rcParams['ytick.major.size'] = 4
-mpl.rcParams['lines.linewidth'] = 1
-mpl.rcParams['font.family'] = 'Arial'
-# FMT = 'svg'
-# fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi, transparent=True)
-FMT = 'png'
-fig_kwargs = dict(format=FMT, bbox_inches='tight', dpi=dpi)
-#######################################################################
+mpl.use('Agg')
 import matplotlib.pyplot as plt
+from argparse import ArgumentParser
+
+
+def configure_matplotlib(dpi=1200, font_size=8):
+    mpl.rcParams['figure.dpi'] = dpi
+    mpl.rcParams['savefig.dpi'] = dpi
+    mpl.rcParams['font.size'] = font_size
+    mpl.rcParams['legend.fontsize'] = font_size - 2
+    mpl.rcParams['xtick.labelsize'] = font_size
+    mpl.rcParams['ytick.labelsize'] = font_size
+    mpl.rcParams['xtick.major.size'] = 4
+    mpl.rcParams['ytick.major.size'] = 4
+    mpl.rcParams['lines.linewidth'] = 1
+    mpl.rcParams['font.family'] = 'Arial'
 
 
 def get_longest_isoform(in_df):
-    unique_locs = list(set([f"{row['chr']}_{row['coord']}" for _, row in df_metagene[['chr', 'coord']].iterrows()]))
+    unique_locs = list(set([f"{row['chr']}_{row['coord']}" for _, row in in_df[['chr', 'coord']].iterrows()]))
 
     longest_tx = []
     for this_unique_loc in unique_locs:
@@ -38,18 +33,76 @@ def get_longest_isoform(in_df):
     return out_df
 
 
-bed_file = '/home/adrian/Data/TRR319_RMaP_BaseCalling_RNA004/Adrian/m6a.dist.measures.txt'
-img_out = '/home/adrian/img_out/RNA004_psi_KD_OE_analysis'
+def plot_metagene(df, output_path, plot_name='metagene_plot', fmt='png', 
+                  bins=30, figsize=(5, 5), dpi=1200, transparent=False):
+    
+    cm = 1/2.54  # centimeters in inches
+    fig_kwargs = dict(format=fmt, bbox_inches='tight', dpi=dpi, transparent=transparent)
+    
+    plt.figure(figsize=(figsize[0]*cm, figsize[1]*cm))
+    plt.hist(df['rel_location'], range=[0, 3], bins=bins)
+    plt.xlabel('Gene region')
+    plt.ylabel('Site count')
+    plt.xticks([])
+    plt.xlim([0, 3])
+    plt.axvline(x=1, c='gray', ls='--')
+    plt.axvline(x=2, c='gray', ls='--')
+    
+    os.makedirs(output_path, exist_ok=True)
+    output_file = os.path.join(output_path, f'{plot_name}.{fmt}')
+    plt.savefig(output_file, **fig_kwargs)
+    plt.close()
+    print(f'Plot saved to: {output_file}')
 
-df_metagene = pd.read_csv(bed_file, sep='\t')
-df_metagene_longest_tx = get_longest_isoform(df_metagene)
 
-plt.figure(figsize=(5*cm, 5*cm))
-plt.hist(df_metagene_longest_tx['rel_location'], range=[0, 3], bins=30)
-plt.xlabel('Gene region')
-plt.ylabel('Site count')
-plt.xticks([])
-plt.xlim([0, 3])
-plt.axvline(x=1, c='gray', ls='--')
-plt.axvline(x=2, c='gray', ls='--')
-plt.savefig(os.path.join(img_out, f'metagene_m6a_up.{FMT}'), **fig_kwargs)
+def main():
+    parser = ArgumentParser(description='Plot metagene distribution of modification sites')
+    
+    parser.add_argument('--input', '-i', type=str, required=True,
+                        help='Input file with metagene distribution data (TSV format)')
+    parser.add_argument('--output_dir', '-o', type=str, required=True,
+                        help='Output directory for plots')
+    parser.add_argument('--plot_name', type=str, default='metagene_plot',
+                        help='Base name for output plot (default: metagene_plot)')
+    parser.add_argument('--format', type=str, default='png', choices=['png', 'pdf', 'svg'],
+                        help='Output format (default: png)')
+    parser.add_argument('--bins', type=int, default=30,
+                        help='Number of histogram bins (default: 30)')
+    parser.add_argument('--figsize', type=float, nargs=2, default=[5.0, 5.0],
+                        help='Figure size in cm (width height) (default: 5 5)')
+    parser.add_argument('--dpi', type=int, default=1200,
+                        help='Resolution for output (default: 1200)')
+    parser.add_argument('--font_size', type=int, default=8,
+                        help='Font size for labels (default: 8)')
+    parser.add_argument('--transparent', action='store_true',
+                        help='Save with transparent background')
+    parser.add_argument('--use_longest_isoform', action='store_true',
+                        help='Filter to use only the longest isoform per location')
+    
+    args = parser.parse_args()
+    
+    configure_matplotlib(dpi=args.dpi, font_size=args.font_size)
+    
+    print(f'Reading data from: {args.input}')
+    df_metagene = pd.read_csv(args.input, sep='\t')
+    
+    if args.use_longest_isoform:
+        print('Filtering to longest isoforms...')
+        df_metagene = get_longest_isoform(df_metagene)
+    
+    plot_metagene(
+        df_metagene,
+        args.output_dir,
+        plot_name=args.plot_name,
+        fmt=args.format,
+        bins=args.bins,
+        figsize=args.figsize,
+        dpi=args.dpi,
+        transparent=args.transparent
+    )
+    
+    print('Finished')
+
+
+if __name__ == '__main__':
+    main()
