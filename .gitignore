@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files
+*.bam
+*.bam.bai
+*.bedmethyl
+*.bedmethyl.gz
+*.bedmethyl.gz.tbi
+*.dmr
+*.bed
+*.npz
+*.fastq
+*.fastq.gz
+*.fasta
+*.fa
+*.fai
+
+# Results and outputs
+results/
+output/
+*.png
+*.pdf
+*.svg
+*.jpg
+*.jpeg
+
+# Logs
+*.log
+*.out
+*.err
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Slurm
+slurm-*.out
