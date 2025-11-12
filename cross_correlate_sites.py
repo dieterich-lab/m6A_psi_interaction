@@ -46,7 +46,7 @@ def load_sites(file_path, mod_filter=None):
     return df
 
 
-def calculate_nearest_distances(df_sites1, df_sites2):
+def calculate_nearest_distances(df_sites1, df_sites2, scaling):
     """Calculates nearest distances from df_sites1 to df_sites2."""
     print(f'\nCalculating nearest distances...')
     min_dist = []
@@ -65,9 +65,9 @@ def calculate_nearest_distances(df_sites1, df_sites2):
             distances = (sub_df_sites2['chromStart'] - start1).values
             if strand == '-':
                 distances = -distances
-            
-            # Find the distance with the minimum absolute value
-            min_dist.append(distances[np.argmin(np.abs(distances))])
+            if len(distances):
+                # Find the distance with the minimum absolute value
+                min_dist.append(distances[np.argmin(np.abs(distances))]/scaling)
         except KeyError:
             # No matching chrom/strand in df2
             continue
@@ -76,35 +76,30 @@ def calculate_nearest_distances(df_sites1, df_sites2):
     return min_dist
 
 
-def plot_distance_distribution(min_dist, output_path, xmax=10000):
+def plot_distance_distribution(min_dist, args, xmax=10000):
     """Plots the cumulative distribution of nearest-neighbor distances."""
     fig_kwargs = dict(bbox_inches='tight', dpi=300)
-    
-    abs_distances = np.abs(min_dist)
-    
-    plt.figure(figsize=(5, 4))
-    
-    # Plot ECDF (Empirical Cumulative Distribution Function)
-    plt.hist(abs_distances, bins=np.logspace(0, 8, 100), cumulative=True, 
-             density=True, histtype='step', label='ECDF')
-    
-    plt.xscale('log')
-    plt.xlim(left=1, right=1e8)
-    plt.ylim(bottom=0)
-    plt.xlabel('Absolute nearest distance (nt)')
-    plt.ylabel('Cumulative probability')
-    plt.title(f'N = {len(min_dist)} sites')
-    plt.grid(True, which="both", ls="--", linewidth=0.5)
-    
+    plt.figure(figsize=(4, 4))
+    if args.xmax:
+        counts, _, _ = plt.hist(min_dist, range=[-args.xmax, args.xmax], bins=2*args.xmax, color="gray")
+        label = "(nt)"
+    else:
+        counts, _, _ = plt.hist(min_dist, color="gray")
+        label = "(kb)"
+    label1 = f"{args.mod_filter1} ({args.name1})" if args.mod_filter1 else f"All ({args.name1})"
+    label2 = f"{args.mod_filter2} ({args.name2})" if args.mod_filter2 else f"All ({args.name2})"
+    plt.xlabel(f'Nearest distance {label}\n{label2} - {label1}')
+    plt.ylabel('Site count')
+    plt.title(f'{int(np.sum(counts))} / {len(min_dist)} {label1} sites')
+    plt.tight_layout()
     # Save the primary output (e.g., PNG)
-    plt.savefig(output_path, format='png', **fig_kwargs)
-    
+    plt.savefig(args.output_file, format='png', **fig_kwargs)
     # Save the PDF version
-    pdf_output_path = os.path.splitext(output_path)[0] + '.pdf'
+    pdf_output_path = os.path.splitext(args.output_file)[0] + '.pdf'
     plt.savefig(pdf_output_path, format="pdf", **fig_kwargs)
     
     plt.close()
-    print(f'Saved plot: {output_path}')
+    print(f'Saved plot: {args.output_file}')
     print(f'Saved plot: {pdf_output_path}')
 
 
@@ -113,27 +108,40 @@ def main():
     
     parser.add_argument('--bed1', type=str, required=True,
                         help='Path to first BED file.')
+    parser.add_argument('--name1', type=str, required=True,
+                        help='BED file 1 description e.g. down (for dmr down sites).')
     parser.add_argument('--bed2', type=str, required=True,
                         help='Path to second BED file.')
-    parser.add_argument('--mod_filter', type=str,
-                        help='Optional: filter sites in --bed1 by the "name" column.')
+    parser.add_argument('--name2', type=str, required=True,
+                        help='BED file 2 description e.g. up (for dmr up sites).')
     parser.add_argument('--output_file', '-o', type=str, required=True,
                         help='Output file path for the plot (e.g., plot.png).')
+    parser.add_argument('--mod_filter1', type=str,
+                        help='Optional: filter sites in --bed1 by the "name" column (short name).')
+    parser.add_argument('--mod_filter2', type=str,
+                        help='Optional: filter sites in --bed2 by the "name" column  (short name).')
+    parser.add_argument('--xmax', type=int, default=None,
+                        help='Distance range in nt (if not given, all is shown in kb)')
     # xmax is no longer used for plotting range but could be kept for other purposes if needed.
     # For now, it's removed to avoid confusion.
     
     args = parser.parse_args()
-
+    scaling = 1000
+    label = "(kb)"
+    if args.xmax:
+        scaling = 1
+        label = "(nt)"
+        
     configure_matplotlib()
 
-    df_sites1 = load_sites(args.bed1, mod_filter=args.mod_filter)
-    df_sites2 = load_sites(args.bed2)
+    df_sites1 = load_sites(args.bed1, mod_filter=args.mod_filter1)
+    df_sites2 = load_sites(args.bed2, mod_filter=args.mod_filter2)
 
     if df_sites1.empty or df_sites2.empty:
         print('\nOne or both input files are empty or could not be loaded. Exiting.')
         return
-
-    min_dist = calculate_nearest_distances(df_sites1, df_sites2)
+    
+    min_dist = calculate_nearest_distances(df_sites1, df_sites2, scaling)
     
     if not min_dist:
         print('\nNo overlapping sites found (check chromosome and strand). Cannot generate plot.')
@@ -142,15 +150,15 @@ def main():
     print(f'\nGenerating distribution plot...')
     plot_distance_distribution(
         min_dist,
-        args.output_file,
+        args
     )
 
     print(f'\nDistance statistics:')
-    print(f'  Mean: {np.mean(min_dist):.2f} nt')
-    print(f'  Median: {np.median(min_dist):.2f} nt')
-    print(f'  Std Dev: {np.std(min_dist):.2f} nt')
-    print(f'  Min: {np.min(min_dist)} nt')
-    print(f'  Max: {np.max(min_dist)} nt')
+    print(f'  Mean: {np.mean(min_dist):.2f} {label}')
+    print(f'  Median: {np.median(min_dist):.2f} {label}')
+    print(f'  Std Dev: {np.std(min_dist):.2f} {label}')
+    print(f'  Min: {np.min(min_dist)} {label}')
+    print(f'  Max: {np.max(min_dist)} {label}')
     
     print('\nFinished.')
 

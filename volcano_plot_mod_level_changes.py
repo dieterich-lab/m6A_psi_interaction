@@ -127,6 +127,29 @@ def write_bed_files(in_df_sites, in_mask_change, in_args, base):
             print(f"Wrote {len(sites_to_write)} sites to {out_path}")
 
 
+def plot_logo(in_df_sites, in_mask_change, in_args, base, in_ref, span=3):
+    """Plot logo"""
+    for change_type, mask in [('up', in_mask_change['pos_change']), ('down', in_mask_change['neg_change'])]:
+        sites_change = in_df_sites[mask]
+        all_refseq = []
+        if not sites_change.empty:
+            for _, row in sites_change.iterrows():
+                refseq = in_ref[row['chrom']][(row['start'] - span):(row['start'] + span + 1)]
+                if row['strand'] == '-':
+                    refseq = refseq.reverse_complement()
+                all_refseq.append(refseq)
+            df_logo = logomaker.alignment_to_matrix([str(seq) for seq in all_refseq])
+    
+            fig = plt.figure(figsize=(10, 5))
+            ax = fig.subplots()
+            logomaker.Logo(df_logo, ax=ax)
+            ax.set_xticks(np.arange(0, 2 * span + 1, span), np.arange(0, 2 * span + 1, span) - span)
+            ax.set_title(f'{base}, {change_type}')
+            out_path = os.path.join(in_args.out_dir, f'logo_{change_type}_{base}_site_motifs.png')
+            fig.savefig(out_path, bbox_inches='tight')
+            plt.close(fig)
+
+
 def plot_volcano(vec_change, vec_neg_log_pval, vec_mod, mask_no_change, mask_change, num_neg_change, num_pos_change, title, out_path, args):
     """Plots a single volcano plot."""
     markers = ['o', 's', 'D', '^', 'v', '<', '>']
@@ -214,6 +237,8 @@ def main():
                         help='use balanced effect size and p-value, only available with replicates')
     parser.add_argument('--filter_by_motifs', action='store_true',
                         help='filter sites by pre-defined m6A and psi motifs')
+    parser.add_argument('--plot-logo', action='store_true',
+                        help='Plot logo')
     parser.add_argument('--xlim', type=int, default=101,
                         help='x-axis limit for display')
     parser.add_argument('--chromosome', type=str, default=None,
@@ -281,7 +306,9 @@ def main():
         mask_no_change, mask_change, num_neg_change, num_pos_change = get_mask(vec_change, vec_neg_log_pval, vec_mod, args)
         
         write_bed_files(df_sites, mask_change, args, base)
-
+        if args.plot_logo:
+            plot_logo(df_sites, mask_change, args, base, ref)
+    
         if args.split_plots:
             # Plot combined volcano for the base
             plot_title = f'${dict_display_mod[base]}$'

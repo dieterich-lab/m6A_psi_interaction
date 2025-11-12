@@ -32,7 +32,7 @@ dict_display_labels = {
     'a': 'm^6A',
     '69426': 'Am',
     '17596': 'I',
-    '17802': '\psi',
+    '17802': 'Y',
     '19227': 'Um',
     '19228': 'Cm',
     'm': 'm^5C',
@@ -46,7 +46,7 @@ MOD_INFO = {
         'AAACT', 'GAACA', 'AGACA', 'AGACC', 'GAACC', 'TGACA',
         'TAACT', 'AAACA', 'TGACC', 'TAACA', 'AAACC', 'TAACC'
     ]),
-    'psi': ('T', 17802, '\psi', ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
+    'Y': ('T', 17802, 'Y', ['GTTCA', 'GTTCC', 'GTTCG', 'GTTCT'] + ['TGTAG'] +
         [f'{pos1}{pos2}T{pos4}{pos5}'
             for pos1 in ['A', 'C', 'G', 'T']
             for pos2 in ['A', 'G']
@@ -69,28 +69,7 @@ for mod_name, info in MOD_INFO.items():
     MOD_INFO[mod_name] = info + (rc_motifs,)
 
 
-            
-def get_mean_logit(in_probs, num_top_locs=5):
-    if len(in_probs) == 0:
-        return np.nan
-    top_probs = np.sort(in_probs)[-num_top_locs:]
-    rescaled_probs = np.clip(np.array(top_probs) / 255.0, a_max=0.999, a_min=0.001)
-    logits = np.log2(rescaled_probs / (1-rescaled_probs))
-    return np.mean(logits)
-
-
-def get_mean_logit_mod_level(in_read, mod_names):
-    mod_mean_logit = {}
-    for mod_name in mod_names:
-        base, _, mod_code, _, _ = MOD_INFO[mod_name]
-        # This logic for getting the tag might need adjustment based on strand-specificity
-        tag = (base, 0, mod_code) 
-        this_mod_probs = [this_tup[1] for this_tup in in_read.modified_bases.get(tag, [])]
-        mod_mean_logit[mod_name] = get_mean_logit(this_mod_probs)
-    return mod_mean_logit
-
-
-def get_mod_mean_occupancy(in_read, mod_names, min_locs=10, filter_by_motifs=False, strand_specific=True):
+def get_mod_mean_occupancy(in_read, mod_names, min_locs=10, filter_by_motifs=False, strand_specific=False):
     mod_mean_occupancy = {}
     n_sites = {}
     for mod_name in mod_names:
@@ -111,7 +90,7 @@ def get_mod_mean_occupancy(in_read, mod_names, min_locs=10, filter_by_motifs=Fal
         
         if filter_by_motifs and motifs:
             loc_motifs = [in_read.query_sequence[this_loc - 2:this_loc + 3] for this_loc in this_mod_locs]
-            current_motifs = rc_motifs if in_read.is_reverse else motifs
+            current_motifs = rc_motifs if strand_specific and in_read.is_reverse else motifs
             motif_included = np.array([this_motif in current_motifs for this_motif in loc_motifs])
             filtered_mod_probs = this_mod_probs[motif_included]
         else:
@@ -135,12 +114,12 @@ def main():
                         help='BAM file')
     parser.add_argument('--ds', type=str, required=True,
                         help='Name')
-    parser.add_argument('--mod_names', type=str, nargs=2, default=['m6A', 'psi'],
+    parser.add_argument('--mod_names', type=str, nargs=2, default=['m6A', 'Y'],
                         help='Two modification names to compare from: ' + ', '.join(MOD_INFO.keys()))
     parser.add_argument('--filter_by_motifs', action='store_true',
                         help='Filter modification sites by known motifs.')
-    parser.add_argument('--no_strand_specific', dest='strand_specific', action='store_false',
-                        help='Do not treat strands separately for modification detection.')
+    parser.add_argument('--do_both_strands', dest='strand_specific', action='store_true',
+                        help='Do both strands, else use only + strand (default).')
     
     args = parser.parse_args()
     
@@ -152,8 +131,8 @@ def main():
     print(f'Comparing {mod1_name} and {mod2_name}')
     if args.filter_by_motifs:
         print('Filtering by motifs.')
-    if not args.strand_specific:
-        print('Not using strand-specific detection.')
+    if args.strand_specific:
+        print('Using strand-specific detection.')
 
     single_read_mean_occupancy = []
     single_read_n_sites = []
@@ -234,20 +213,20 @@ def main():
     counts = [len(bin_data) for bin_data in binned_mod2]
     for i, count in enumerate(counts):
         y = np.median(bp1['medians'][i].get_ydata())
-        plt.text(i + 1, 1.06, f'n={count}', ha='center', va='bottom', fontsize='x-small')
+        plt.text(i + 1.1, 1.01, f'{count}', ha='center', va='bottom', fontsize='x-small', rotation=45, rotation_mode='anchor')
     plt.ylim([-0.01, 1.15])
     plt.xticks(np.arange(len(bin_edges)) + 0.5, xy_ticks)
     plt.yticks(bin_edges, xy_ticks)
     plt.xlabel(f"occ(${mod1_display}$) per read")
     plt.ylabel(f"occ(${mod2_display}$) per read")
-    plt.text(1, .95, rf"$\rho$={corr}, p-value={pval}", fontsize="xx-small")
+    # plt.text(1, .95, rf"$\rho$={corr}, p-value={pval}", fontsize="xx-small")
     plt.subplot(2, 2, 2)
     bp2 = plt.boxplot(binned_mod1, flierprops=flierprops)
     # Add counts to boxplot
     counts = [len(bin_data) for bin_data in binned_mod1]
     for i, count in enumerate(counts):
         y = np.median(bp2['medians'][i].get_ydata())
-        plt.text(i + 1, 1.06, f'n={count}', ha='center', va='bottom', fontsize='x-small')
+        plt.text(i + 1.1, 1.01, f'{count}', ha='center', va='bottom', fontsize='x-small', rotation=45, rotation_mode='anchor')
     plt.ylim([-0.01, 1.15])
     plt.xticks(np.arange(len(bin_edges)) + 0.5, xy_ticks)
     plt.yticks(bin_edges, xy_ticks)
