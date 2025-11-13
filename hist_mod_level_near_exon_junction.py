@@ -116,11 +116,11 @@ def make_plot_by_2(in_junction_freq, in_non_junction_freq, in_args):
         plt.xlabel(f'Stoichiometry (${dict_display_labels[mod_code]}$)')
         plt.xlim(bin_range)
     plt.legend()
-    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.ds}.png')
+    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.name}.png')
     plt.savefig(out_file, bbox_inches='tight')
-    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.ds}.pdf')
+    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.name}.pdf')
     plt.savefig(out_file, format="pdf", bbox_inches='tight')
-    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.ds}.svg')
+    out_file = os.path.join(in_args.img_out, f'exon_junction_mod_freq_{in_args.name}.svg')
     plt.savefig(out_file, format="svg", bbox_inches='tight')
 
 
