@@ -60,17 +60,14 @@ This script computes the distribution of site modifications that are within / fu
 python3 hist_mod_level_near_exon_junction.py \
 --gtf_exon ./assets/data/chr1.exons.GRCh38.102.gtf \
 --bedmethyl ./assets/data/chr1.CTRL.cov10.bedmethyl \
---mod_code a \
---out_file ${out_dir}/hist_mod_chr1_a.png
+--mod_code a 17802 \
+--name hist_mod_chr1 \
+--img_out ${out_dir}
 ```
 
-m6A (`--mod_code a`) in chr1
+m6A (`--mod_code a`) and psi (`--mod_code 17802`) in chr1
 
-![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_a.png)
-
-psi (`--mod_code 17802`)
-
-![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/hist_mod_chr1_17802.png)
+![](https://github.com/ADHDrian/RNA004_psi_KD_OE_analysis/blob/main/assets/images/exon_junction_mod_freq_hist_mod_chr1.png)
 
 The exon junction margin can be adjusted by `--exon_junction_margin`.
 Note: For the purpose of speed optimization, the input exon gtf and bedmethyl files are expected to be filtered such sites are within the same chromosome. Inputting cross-chromosome data might produce erroneous results.
