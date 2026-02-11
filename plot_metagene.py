@@ -20,16 +20,20 @@ def configure_matplotlib(dpi=1200, font_size=8):
 
 
 def get_longest_isoform(in_df):
-    unique_locs = list(set([f"{row['chr']}_{row['coord']}" for _, row in in_df[['chr', 'coord']].iterrows()]))
-
-    longest_tx = []
-    for this_unique_loc in unique_locs:
-        this_chr, this_coord = this_unique_loc.split('_')
-        sub_df = in_df[(in_df['chr'] == this_chr) * (in_df['coord'] == int(this_coord))]
-        tx_len = sub_df[['utr5_size', 'cds_size', 'utr3_size']].sum(axis=1)
-        longest_tx.append(sub_df.iloc[tx_len.argmax()])
-    out_df = pd.DataFrame(longest_tx)
-    out_df.sort_values(['chr', 'coord'], inplace=True)
+    # Ensure consistent types for merging/grouping
+    in_df['chr'] = in_df['chr'].astype(str)
+    
+    # Calculate transcript length
+    in_df['tx_len'] = in_df['utr5_size'] + in_df['cds_size'] + in_df['utr3_size']
+    
+    # Sort by tx_len descending
+    in_df_sorted = in_df.sort_values('tx_len', ascending=False)
+    
+    # Drop duplicates by chr/coord, keeping first (longest)
+    out_df = in_df_sorted.drop_duplicates(subset=['chr', 'coord'])
+    
+    # Restore sorting by coordinate
+    out_df = out_df.sort_values(['chr', 'coord'])
     return out_df
 
 
@@ -48,6 +52,12 @@ def plot_metagene(df, output_path, plot_name='metagene_plot', fmt='png',
     plt.axvline(x=1, c='gray', ls='--')
     plt.axvline(x=2, c='gray', ls='--')
     
+    # Add labels for gene regions
+    ymin, ymax = plt.ylim()
+    plt.text(0.5, ymax * 0.95, "5'UTR", ha='center', va='top')
+    plt.text(1.5, ymax * 0.95, "CDS", ha='center', va='top')
+    plt.text(2.5, ymax * 0.95, "3'UTR", ha='center', va='top')
+
     os.makedirs(output_path, exist_ok=True)
     output_file = os.path.join(output_path, f'{plot_name}.{fmt}')
     plt.savefig(output_file, **fig_kwargs)
