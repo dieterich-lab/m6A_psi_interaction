@@ -1,0 +1,70 @@
+#!/bin/bash
+
+#SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -c 4
+#SBATCH --mem=400G
+#SBATCH --output=logs/xcalls/slurm-%A_%a.out
+#SBATCH --error=logs/xcalls/slurm-%A_%a.err
+
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <samples.txt> <modkit binary> [options] [--dry-run]"
+  exit 1
+fi
+
+INPUT="$1"
+MODKIT="$2"
+shift 2
+
+# collect options until we hit the dry-run flag
+# [options] may contain flags
+OPTS=() # OPTS=("$@") w/o flags
+while [[ $# -gt 0 && "$1" != "--dry-run" ]]; do
+  OPTS+=("$1")
+  shift
+done
+
+# defaults
+DRY_RUN=0
+
+# parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# pick input
+readarray -t list < "$INPUT"
+IDX=$((SLURM_ARRAY_TASK_ID - 1))
+LINE="${list[$IDX]}"
+read -r BAM <<< "$(awk '{print $1}' <<< "$LINE")"
+
+DIR="${BAM%/*}"
+BASE="${BAM##*/}"
+NAME="${BASE%.bam}"
+TAB="${DIR}/../modkit/${NAME}_xcalls_a_17802_motifs.tab.gz"
+
+# default --mapped-only, enforce only selected filters (skip inferred), keep all probabilities
+# filter by motifs, a and 17802 only
+# cf. https://github.com/nanoporetech/modkit/issues/518
+
+if [[ $DRY_RUN -eq 1 ]]; then
+  printf 'DRY RUN:\n'
+  printf '%q ' "$MODKIT" extract calls -t 4 -q 1000 --ignore-index --mapped-only "${OPTS[@]}" "$BAM" -
+  printf '| awk -f parse_xcalls_pos.awk | bgzip -@ 4 > '
+  printf '%q\n' "$TAB"
+  exit 0
+fi
+
+"$MODKIT" extract calls -t 4 -q 1000 --ignore-index --mapped-only "${OPTS[@]}" "$BAM" - \
+| awk -f parse_xcalls_pos.awk \
+| bgzip -@ 4  > "$TAB"

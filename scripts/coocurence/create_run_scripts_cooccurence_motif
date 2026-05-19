@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# generate co-occurence data - motif-based, using Bernouilli sampling (null)
+# plot with https://jupyter.internal/user/eboileau/lab/tree/runs/RNAmod/m6A-Y/notebooks/figures.ipynb
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <condition> [options] [--dry-run]"
+  exit 1
+fi
+
+INPUT="$1"
+shift
+
+# collect options until we hit the dry-run flag
+# [options] may contain flags
+OPTS=() # OPTS=("$@") w/o flags
+while [[ $# -gt 0 && "$1" != "--dry-run" ]]; do
+  OPTS+=("$1")
+  shift
+done
+
+# defaults
+DRY_RUN=0
+
+# parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+case "$INPUT" in
+# ------------------------------------------------------------------------------
+KD)
+PARENT=/prj/TRR319_RMaP_BaseCalling_RNA004/Etienne/analysis/HEK293-Y-KD
+PUS1_KD=( HEK293_PUS1_kd_xcalls_a_17802_motifs.tab.gz HEK293_PUS1_2_xcalls_a_17802_motifs.tab.gz )
+PUS7_KD=( HEK293_PUS7_kd_xcalls_a_17802_motifs.tab.gz HEK293_PUS7_2_xcalls_a_17802_motifs.tab.gz )
+TRUB1_KD=( HEK293_TRUB1_kd_xcalls_a_17802_motifs.tab.gz HEK293_TRUB1_2_xcalls_a_17802_motifs.tab.gz )
+CTRL_KD=( HEK293_ctrl_xcalls_a_17802_motifs.tab.gz HEK293_ctrl_2_xcalls_a_17802_motifs.tab.gz )
+declare -a CONDITIONS=( PUS1_KD PUS7_KD TRUB1_KD CTRL_KD )
+;;
+# ------------------------------------------------------------------------------
+OE)
+PARENT=/prj/TRR319_RMaP_BaseCalling_RNA004/Etienne/analysis/HEK293-Y-OE
+PUS1_OE=( SS_HEK293_PUS1-OE_rep1_xcalls_a_17802_motifs.tab.gz SS_HEK293_PUS1_2_xcalls_a_17802_motifs.tab.gz )
+PUS7_OE=( SS_HEK293_PUS7-OE_rep1_xcalls_a_17802_motifs.tab.gz SS_HEK293_PUS7_2_xcalls_a_17802_motifs.tab.gz )
+TRUB1_OE=( SS_HEK293_TRUB1-OE_rep1_xcalls_a_17802_motifs.tab.gz SS_HEK293_TRUB1_2_xcalls_a_17802_motifs.tab.gz )
+CTRL_OE=( SS_HEK293_ctrl_rep1_xcalls_a_17802_motifs.tab.gz SS_HEK293_ctrl_2_xcalls_a_17802_motifs.tab.gz )
+declare -a CONDITIONS=( PUS1_OE PUS7_OE TRUB1_OE CTRL_OE )
+;;
+M3I)
+# ------------------------------------------------------------------------------
+PARENT=/prj/TRR319_RMaP_BaseCalling_RNA004/Etienne/analysis/HEK293-M3I
+METTL3I_6h=( HEK293_M3I_6h_1_xcalls_a_17802_motifs.tab.gz HEK293_M3I_6h_2_xcalls_a_17802_motifs.tab.gz )
+METTL3I_24h=( HEK293_M3I_24h_1_xcalls_a_17802_motifs.tab.gz HEK293_M3I_24h_2_xcalls_a_17802_motifs.tab.gz )
+DMSO=( HEK293_DMSO_1_xcalls_a_17802_motifs.tab.gz HEK293_DMSO_2_xcalls_a_17802_motifs.tab.gz )
+declare -a CONDITIONS=( METTL3I_6h METTL3I_24h DMSO )
+;;
+# ------------------------------------------------------------------------------
+*)
+echo -n "unknown"
+exit 1
+;;
+esac
+
+INDIR="${PARENT}/modkit"
+OUTDIR="${PARENT}/figures"
+
+# RUN
+for condition in "${CONDITIONS[@]}"; do
+output="${OUTDIR}/${condition}"
+mkdir -p "$output"
+outfile="${output}/${condition}_calls_a_17802_motifs.pos.tab.gz"
+declare -n lst=${condition}
+lst=( "${lst[@]/#/${INDIR}\/}" )
+cat > "autorun_cooc_motif_${condition}" << EOF
+#!/bin/bash
+
+#SBATCH -J "$condition"
+#SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -c 24
+#SBATCH --mem=100G
+#SBATCH --output=logs/xcalls/slurm-%A.out
+#SBATCH --error=logs/xcalls/slurm-%A.err
+
+. /prj/TRR319_RMaP_BaseCalling_RNA004/Etienne/venv/mpi/bin/activate
+
+if [[ -s "$outfile" ]]; then
+  echo "Using: $outfile"
+else
+  zcat ${lst[@]} | awk 'NR==1 || !/^read_id/' | gzip > "$outfile"
+fi
+
+# ./read_level_cooccurence_motif.py 
+# write null for dde - 25.03.26
+# ./read_level_cooccurence_motif_and_dde.py \
+# add homotypic - 27.04.26
+./read_level_cooccurence_final.py \
+--calls "$outfile" \
+${OPTS[@]} \
+--output "$output" \
+--name "$condition"
+EOF
+
+if [[ $DRY_RUN -eq 0 ]]; then
+chmod +x "autorun_cooc_motif_${condition}"
+sbatch "autorun_cooc_motif_${condition}"
+fi
+
+done

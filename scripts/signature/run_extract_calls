@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#SBATCH -J xcalls
+#SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -c 4
+#SBATCH --mem=100G
+#SBATCH --output=logs/slurm-%A.out
+#SBATCH --error=logs/slurm-%A.err
+
+
+PARENT=/prj/Schragi_Schwartz/20260121_SS_HEK293_triple_writer/Dorado_v111/SS_triple_writer_rep1_WDX/20260121_1011_3D_PBA64895_91b37f17/bam_pass/splitBAM
+OUTPUT=/prj/Schragi_Schwartz/analysis/data/modkit
+
+SNPS=/prj/Schragi_Schwartz/analysis/data/annotation/dbSnp155Common_slim.bed
+
+#INPUT=triple_1.bam
+INPUT=ctrl_1.bam
+
+module load modkit
+
+modkit extract calls -t 4 --mapped-only --suppress-progress --ignore-implicit --no-filtering --ignore-index --edge-filter 10,10 --reference /biodb/genomes/homo_sapiens/GRCh38_102/GRCh38_102.fa "${PARENT}/${INPUT}" - | cut -f 1,2,3,4,6,12,13,14,15,16,17,18 | awk '(NR==1) || (($8 ~ /^(-|m|17802)$/) && ($12 ~ /^[CT]$/))' | awk 'BEGIN{FS=OFS="\t"} {print $4,$3,$3+1,$0}' | bedtools intersect -v -a stdin -b ${SNPS} | cut -f 4- | bgzip > "${OUTPUT}/${INPUT}.slim.tab.gz"
+
